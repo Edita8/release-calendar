@@ -77,6 +77,17 @@
   tbody td{padding:4px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
   tbody tr:nth-child(even){background:#FAFBFC;}
   tbody tr:hover{background:var(--navy-pale);}
+  thead th.sortable{cursor:pointer;user-select:none;}
+  thead th.sortable:hover{background:var(--navy-light);}
+  thead th .sort-arrow{margin-left:4px;opacity:.85;font-size:10px;}
+  tbody tr.dragging{opacity:.35;}
+  tbody tr.drag-over-top{box-shadow: inset 0 3px 0 0 var(--navy-light);}
+  tbody tr.drag-over-bottom{box-shadow: inset 0 -3px 0 0 var(--navy-light);}
+  td.rowdrag{cursor:grab;text-align:center;color:var(--muted);width:22px;font-size:14px;letter-spacing:-2px;}
+  td.rowdrag:active{cursor:grabbing;}
+  .calendar-filterbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .calendar-filterbar select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;background:#fff;color:var(--text);}
+  .drag-hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;}
   td input, td select, td textarea{
     width:100%;border:1px solid transparent;background:transparent;padding:6px 5px;font-size:12.5px;border-radius:4px;font-family:inherit;color:var(--text);
   }
@@ -256,12 +267,19 @@
     <!-- RELEASE CALENDAR -->
     <section class="panel" id="panel-calendar">
       <div class="panel-head">
-        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing</p></div>
+        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort.</p></div>
         <div class="toolbar">
-          <input class="search" placeholder="Search games, owners, partners…" oninput="renderTable('release_calendar', this.value)">
+          <input class="search" id="calendarSearchInput" placeholder="Search games, owners, partners…" oninput="calendarFilters.text=this.value; renderTable('release_calendar');">
           <button class="btn editor-only" onclick="addRow('release_calendar')">+ Add Game</button>
         </div>
       </div>
+      <div class="calendar-filterbar">
+        <select id="calFilterQuarter" onchange="calendarFilters.quarter=this.value; renderTable('release_calendar');"><option value="All">All Quarters</option></select>
+        <select id="calFilterStage" onchange="calendarFilters.stage=this.value; renderTable('release_calendar');"><option value="All">All Stages</option></select>
+        <select id="calFilterType" onchange="calendarFilters.product_type=this.value; renderTable('release_calendar');"><option value="All">All Product Types</option></select>
+        <button class="btn secondary" onclick="clearCalendarFilters()">Clear Filters</button>
+      </div>
+      <div class="drag-hint editor-only" id="calendarDragHint"></div>
       <div class="table-wrap"><table><thead><tr id="head-release_calendar"></tr></thead><tbody id="body-release_calendar"></tbody></table></div>
     </section>
 
@@ -532,9 +550,9 @@ const TABLES = {
       {key:'product_type', label:'Product Type', type:'select', options:LISTS.product_type, w:110},
       {key:'product_owner', label:'Product Owner', type:'text', w:140},
       {key:'pm_assigned', label:'PM Assigned', type:'text', w:140},
-      {key:'exclusive_partner', label:'Exclusive Partner', type:'text', w:130},
+      {key:'exclusive_partner', label:'Exclusive Partner', type:'text', w:90},
       {key:'assets_ready', label:'Assets Ready', type:'select', options:LISTS.assets_ready, badge:ASSETS_COLORS, w:100},
-      {key:'push_notifications_ready', label:'Push Notifications', type:'select', options:LISTS.push_ready, badge:ASSETS_COLORS, w:110},
+      {key:'push_notifications_ready', label:'Push Notifications', type:'select', options:LISTS.push_ready, badge:ASSETS_COLORS, w:85},
       {key:'planned_production_date', label:'Planned Production', type:'date', w:140},
       {key:'toto_live_date', label:'Toto Live', type:'text', w:100},
       {key:'albatros_live_date', label:'Albatros Live', type:'text', w:100},
@@ -611,6 +629,9 @@ let ONLINE_MODE = false;
 const editingCells = new Set();
 const openGtmCards = new Set();
 let gtmFilter = { quarter:'All', pendingOnly:false, search:'' };
+let calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
+let calendarSort = { key:null, dir:'asc' };
+let draggedCalendarRowId = null;
 
 /* ========================= BOOT ========================= */
 
@@ -619,6 +640,7 @@ async function boot(){
   // data loading below hits a problem.
   try{ setupTabs(); } catch(e){ reportError('Failed to set up navigation: ' + (e.message||e)); }
   try{ buildGtmQuarterChips(); } catch(e){ reportError('Failed to set up filters: ' + (e.message||e)); }
+  try{ populateCalendarFilterOptions(); } catch(e){ reportError('Failed to set up calendar filters: ' + (e.message||e)); }
   document.getElementById('settingsScopeNote').textContent = 'Changing a PIN here updates it for everyone who opens this tracker.';
 
   try{
@@ -696,6 +718,10 @@ async function loadAllTables(){
       if(!rows) rows = SEED[t].map(r => ({...r, id: crypto.randomUUID()}));
     }
     state[t] = rows;
+    if(t === 'release_calendar'){
+      rows.forEach((r,i)=>{ if(r.sort_order===undefined || r.sort_order===null) r.sort_order = i; });
+      rows.sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
+    }
     try{ localStorage.setItem('gxs_'+t, JSON.stringify(rows)); } catch(e){ console.warn('Could not persist locally', t, e); }
   }
 }
@@ -744,8 +770,15 @@ function renderAll(){
   try{ renderGTM(); } catch(e){ reportError('Failed to render Go-to-Market view: ' + (e.message||e)); }
 }
 
-function renderTable(table, filter){
-  filter = (filter||'').toLowerCase();
+const CALENDAR_SORTABLE_KEYS = ['quarter','game_name','stage','product_type','planned_production_date','planned_global_launch'];
+
+function renderTable(table, filterOverride){
+  if(table === 'release_calendar'){
+    if(typeof filterOverride === 'string') calendarFilters.text = filterOverride;
+    renderCalendarTable();
+    return;
+  }
+  const filter = (filterOverride||'').toLowerCase();
   const cfg = TABLES[table];
   const headRow = document.getElementById('head-'+table);
   headRow.innerHTML = cfg.columns.map(c=>`<th style="min-width:${c.w}px">${c.label}</th>`).join('') + (EDIT_MODE ? '<th style="width:40px"></th>' : '');
@@ -760,6 +793,199 @@ function renderTable(table, filter){
     }
     body.appendChild(renderRow(table, cfg, row));
   });
+}
+
+/* ---- Release Calendar: sortable header + column filters + drag reorder ---- */
+
+function populateCalendarFilterOptions(){
+  const qSel = document.getElementById('calFilterQuarter');
+  const sSel = document.getElementById('calFilterStage');
+  const tSel = document.getElementById('calFilterType');
+  if(!qSel || !sSel || !tSel) return;
+  LISTS.quarter.forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; qSel.appendChild(o); });
+  LISTS.stage.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sSel.appendChild(o); });
+  LISTS.product_type.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; tSel.appendChild(o); });
+}
+
+function clearCalendarFilters(){
+  calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
+  const searchEl = document.getElementById('calendarSearchInput');
+  if(searchEl) searchEl.value = '';
+  ['calFilterQuarter','calFilterStage','calFilterType'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = 'All';
+  });
+  renderTable('release_calendar');
+}
+
+function calendarDragEnabled(){
+  return EDIT_MODE && !calendarSort.key &&
+    calendarFilters.quarter==='All' && calendarFilters.stage==='All' &&
+    calendarFilters.product_type==='All' && !calendarFilters.text;
+}
+
+function updateCalendarDragHint(){
+  const hint = document.getElementById('calendarDragHint');
+  if(!hint) return;
+  hint.textContent = calendarDragEnabled()
+    ? '↕ Drag rows by the ⠿ handle to reorder them.'
+    : 'Clear sorting and filters to drag-reorder rows.';
+}
+
+function sortCalendarRows(rows){
+  if(!calendarSort.key) return rows;
+  const key = calendarSort.key;
+  const dir = calendarSort.dir === 'desc' ? -1 : 1;
+  const dateKeys = ['planned_production_date'];
+  return [...rows].sort((a,b)=>{
+    let av = a[key], bv = b[key];
+    if(dateKeys.includes(key)){
+      const ad = av ? new Date(av) : null, bd = bv ? new Date(bv) : null;
+      const at = ad && !isNaN(ad) ? ad.getTime() : (dir===1 ? Infinity : -Infinity);
+      const bt = bd && !isNaN(bd) ? bd.getTime() : (dir===1 ? Infinity : -Infinity);
+      return (at - bt) * dir;
+    }
+    av = (av===null||av===undefined) ? '' : String(av);
+    bv = (bv===null||bv===undefined) ? '' : String(bv);
+    return av.localeCompare(bv, undefined, {numeric:true, sensitivity:'base'}) * dir;
+  });
+}
+
+function renderCalendarTable(){
+  const table = 'release_calendar';
+  const cfg = TABLES[table];
+  const headRow = document.getElementById('head-'+table);
+  const text = (calendarFilters.text||'').toLowerCase();
+
+  headRow.innerHTML = cfg.columns.map(c=>{
+    const sortable = CALENDAR_SORTABLE_KEYS.includes(c.key);
+    let arrow = '';
+    if(sortable && calendarSort.key===c.key) arrow = `<span class="sort-arrow">${calendarSort.dir==='asc'?'▲':'▼'}</span>`;
+    return `<th style="min-width:${c.w}px" class="${sortable?'sortable':''}" data-key="${c.key}">${c.label}${arrow}</th>`;
+  }).join('') + (EDIT_MODE ? '<th style="width:26px"></th><th style="width:40px"></th>' : '');
+
+  headRow.querySelectorAll('th.sortable').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      if(calendarSort.key === key){
+        calendarSort.dir = calendarSort.dir==='asc' ? 'desc' : 'asc';
+      } else {
+        calendarSort.key = key;
+        calendarSort.dir = 'asc';
+      }
+      renderCalendarTable();
+    });
+  });
+
+  const body = document.getElementById('body-'+table);
+  body.innerHTML = '';
+
+  let rows = (state[table]||[]).filter(row=>{
+    if(text){
+      const hay = cfg.columns.map(c=>String(row[c.key]||'')).join(' ').toLowerCase();
+      if(!hay.includes(text)) return false;
+    }
+    if(calendarFilters.quarter!=='All' && row.quarter!==calendarFilters.quarter) return false;
+    if(calendarFilters.stage!=='All' && row.stage!==calendarFilters.stage) return false;
+    if(calendarFilters.product_type!=='All' && row.product_type!==calendarFilters.product_type) return false;
+    return true;
+  });
+
+  rows = sortCalendarRows(rows);
+
+  const dragEnabled = calendarDragEnabled();
+  updateCalendarDragHint();
+
+  rows.forEach(row=>{
+    body.appendChild(renderCalendarRow(cfg, row, dragEnabled));
+  });
+}
+
+function renderCalendarRow(cfg, row, dragEnabled){
+  const tr = document.createElement('tr');
+  tr.dataset.id = row.id;
+
+  if(EDIT_MODE){
+    const dragTd = document.createElement('td');
+    dragTd.className = 'rowdrag';
+    dragTd.textContent = '⠿';
+    tr.appendChild(dragTd);
+  }
+
+  cfg.columns.forEach(col=>{
+    const td = document.createElement('td');
+    if(col.type==='number') td.classList.add('col-num');
+    td.appendChild(makeField('release_calendar', row, col, 'table'));
+    tr.appendChild(td);
+  });
+
+  if(EDIT_MODE){
+    const delTd = document.createElement('td');
+    delTd.className = 'rowdel';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn danger';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete row';
+    delBtn.onclick = ()=>deleteRow('release_calendar', row.id);
+    delTd.appendChild(delBtn);
+    tr.appendChild(delTd);
+  }
+
+  if(dragEnabled){
+    tr.draggable = true;
+    tr.addEventListener('dragstart', e=>{
+      draggedCalendarRowId = row.id;
+      tr.classList.add('dragging');
+      if(e.dataTransfer){ e.dataTransfer.effectAllowed = 'move'; try{ e.dataTransfer.setData('text/plain', row.id); }catch(err){} }
+    });
+    tr.addEventListener('dragend', ()=>{
+      tr.classList.remove('dragging');
+      document.querySelectorAll('#body-release_calendar tr').forEach(r=>r.classList.remove('drag-over-top','drag-over-bottom'));
+      draggedCalendarRowId = null;
+    });
+    tr.addEventListener('dragover', e=>{
+      e.preventDefault();
+      if(!draggedCalendarRowId || draggedCalendarRowId===row.id) return;
+      const rect = tr.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      tr.classList.toggle('drag-over-top', before);
+      tr.classList.toggle('drag-over-bottom', !before);
+    });
+    tr.addEventListener('dragleave', ()=>{
+      tr.classList.remove('drag-over-top','drag-over-bottom');
+    });
+    tr.addEventListener('drop', e=>{
+      e.preventDefault();
+      tr.classList.remove('drag-over-top','drag-over-bottom');
+      if(!draggedCalendarRowId || draggedCalendarRowId===row.id) return;
+      const rect = tr.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      reorderCalendarRows(draggedCalendarRowId, row.id, before);
+      draggedCalendarRowId = null;
+    });
+  }
+
+  return tr;
+}
+
+function reorderCalendarRows(draggedId, targetId, insertBefore){
+  const rows = state.release_calendar;
+  const fromIdx = rows.findIndex(r=>r.id===draggedId);
+  if(fromIdx===-1) return;
+  const [moved] = rows.splice(fromIdx,1);
+  let toIdx = rows.findIndex(r=>r.id===targetId);
+  if(toIdx===-1){ rows.splice(fromIdx,0,moved); return; }
+  const insertAt = insertBefore ? toIdx : toIdx+1;
+  rows.splice(insertAt,0,moved);
+
+  rows.forEach((r,i)=>{ r.sort_order = i; });
+  persistLocal('release_calendar');
+  renderCalendarTable();
+  renderGTM();
+  if(ONLINE_MODE){
+    Promise.all(rows.map(r=>supa.from('release_calendar').update({sort_order:r.sort_order}).eq('id', r.id)))
+      .catch(e=>console.warn('Could not sync new row order to Supabase (does the sort_order column exist yet?):', e));
+  }
 }
 
 function renderRow(table, cfg, row){
@@ -915,6 +1141,7 @@ async function commit(table, row, sourceView){
 async function addRow(table){
   const blank = {id: crypto.randomUUID()};
   TABLES[table].columns.forEach(c=>blank[c.key]=null);
+  if(table==='release_calendar') blank.sort_order = state[table].length;
   state[table].push(blank);
   renderTable(table);
   persistLocal(table);
