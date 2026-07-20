@@ -74,6 +74,15 @@
   .table-wrap{overflow-x:auto;background:#fff;border-radius:10px;border:1px solid var(--border);}
   table{border-collapse:collapse;width:100%;font-size:12.5px;}
   thead th{background:var(--navy);color:#fff;padding:10px 8px;text-align:left;position:sticky;top:0;white-space:nowrap;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;}
+
+  /* ---------- FROZEN HEADER + RESIZABLE COLUMNS (Release Calendar) ---------- */
+  .freeze-wrap{max-height:68vh;overflow-y:auto;}
+  #table-release_calendar{table-layout:fixed;}
+  #table-release_calendar thead th{overflow:hidden;text-overflow:ellipsis;z-index:2;}
+  #table-release_calendar thead th.sortable{padding-right:16px;}
+  #table-release_calendar tbody td{overflow:hidden;text-overflow:ellipsis;}
+  .col-resize-handle{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:6;}
+  .col-resize-handle:hover, .col-resize-handle:active{background:rgba(255,255,255,0.35);}
   tbody td{padding:4px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
   tbody tr:nth-child(even){background:#FAFBFC;}
   tbody tr:hover{background:var(--navy-pale);}
@@ -267,9 +276,10 @@
     <!-- RELEASE CALENDAR -->
     <section class="panel" id="panel-calendar">
       <div class="panel-head">
-        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort.</p></div>
+        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort. Drag column edges to resize; drag the ⠿ handle to reorder rows.</p></div>
         <div class="toolbar">
           <input class="search" id="calendarSearchInput" placeholder="Search games, owners, partners…" oninput="calendarFilters.text=this.value; renderTable('release_calendar');">
+          <button class="btn secondary" onclick="resetCalendarColumnWidths()">Reset Column Widths</button>
           <button class="btn editor-only" onclick="addRow('release_calendar')">+ Add Game</button>
         </div>
       </div>
@@ -280,7 +290,7 @@
         <button class="btn secondary" onclick="clearCalendarFilters()">Clear Filters</button>
       </div>
       <div class="drag-hint editor-only" id="calendarDragHint"></div>
-      <div class="table-wrap"><table><thead><tr id="head-release_calendar"></tr></thead><tbody id="body-release_calendar"></tbody></table></div>
+      <div class="table-wrap freeze-wrap" id="calendarTableWrap"><table id="table-release_calendar"><colgroup id="colgroup-release_calendar"></colgroup><thead><tr id="head-release_calendar"></tr></thead><tbody id="body-release_calendar"></tbody></table></div>
     </section>
 
     <!-- PRE-RELEASE -->
@@ -632,6 +642,7 @@ let gtmFilter = { quarter:'All', pendingOnly:false, search:'' };
 let calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
 let calendarSort = { key:null, dir:'asc' };
 let draggedCalendarRowId = null;
+let calendarColWidths = {};
 
 /* ========================= BOOT ========================= */
 
@@ -641,6 +652,7 @@ async function boot(){
   try{ setupTabs(); } catch(e){ reportError('Failed to set up navigation: ' + (e.message||e)); }
   try{ buildGtmQuarterChips(); } catch(e){ reportError('Failed to set up filters: ' + (e.message||e)); }
   try{ populateCalendarFilterOptions(); } catch(e){ reportError('Failed to set up calendar filters: ' + (e.message||e)); }
+  try{ loadCalendarColWidths(); } catch(e){ console.warn('Could not load saved column widths', e); }
   document.getElementById('settingsScopeNote').textContent = 'Changing a PIN here updates it for everyone who opens this tracker.';
 
   try{
@@ -795,7 +807,7 @@ function renderTable(table, filterOverride){
   });
 }
 
-/* ---- Release Calendar: sortable header + column filters + drag reorder ---- */
+/* ---- Release Calendar: sortable header + column filters + drag reorder + column resize ---- */
 
 function populateCalendarFilterOptions(){
   const qSel = document.getElementById('calFilterQuarter');
@@ -816,6 +828,71 @@ function clearCalendarFilters(){
     if(el) el.value = 'All';
   });
   renderTable('release_calendar');
+}
+
+/* ---- column widths (per-browser UI preference, resizable by dragging column edges) ---- */
+
+function loadCalendarColWidths(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('gxs_calendar_colwidths') || 'null');
+    calendarColWidths = saved || {};
+  } catch(e){ calendarColWidths = {}; }
+}
+function saveCalendarColWidths(){
+  try{ localStorage.setItem('gxs_calendar_colwidths', JSON.stringify(calendarColWidths)); }
+  catch(e){ console.warn('Could not persist column widths', e); }
+}
+function resetCalendarColumnWidths(){
+  calendarColWidths = {};
+  saveCalendarColWidths();
+  renderCalendarTable();
+}
+function colWidthFor(col){
+  return calendarColWidths[col.key] || col.w;
+}
+
+function buildCalendarColgroup(cfg){
+  const colgroup = document.getElementById('colgroup-release_calendar');
+  if(!colgroup) return;
+  let html = '';
+  if(EDIT_MODE) html += `<col style="width:26px">`;
+  cfg.columns.forEach(c=>{
+    html += `<col data-key="${c.key}" style="width:${colWidthFor(c)}px">`;
+  });
+  if(EDIT_MODE) html += `<col style="width:40px">`;
+  colgroup.innerHTML = html;
+}
+
+let colResizeState = null;
+function startColResize(e, key){
+  const colEl = document.querySelector(`#colgroup-release_calendar col[data-key="${key}"]`);
+  if(!colEl) return;
+  colResizeState = {
+    key,
+    startX: e.clientX,
+    startWidth: colEl.getBoundingClientRect().width
+  };
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  document.addEventListener('mousemove', onColResizeMove);
+  document.addEventListener('mouseup', onColResizeEnd);
+}
+function onColResizeMove(e){
+  if(!colResizeState) return;
+  const delta = e.clientX - colResizeState.startX;
+  const newWidth = Math.max(50, Math.round(colResizeState.startWidth + delta));
+  const colEl = document.querySelector(`#colgroup-release_calendar col[data-key="${colResizeState.key}"]`);
+  if(colEl) colEl.style.width = newWidth + 'px';
+  calendarColWidths[colResizeState.key] = newWidth;
+}
+function onColResizeEnd(){
+  if(!colResizeState) return;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  document.removeEventListener('mousemove', onColResizeMove);
+  document.removeEventListener('mouseup', onColResizeEnd);
+  colResizeState = null;
+  saveCalendarColWidths();
 }
 
 function calendarDragEnabled(){
@@ -857,11 +934,13 @@ function renderCalendarTable(){
   const headRow = document.getElementById('head-'+table);
   const text = (calendarFilters.text||'').toLowerCase();
 
+  buildCalendarColgroup(cfg);
+
   headRow.innerHTML = cfg.columns.map(c=>{
     const sortable = CALENDAR_SORTABLE_KEYS.includes(c.key);
     let arrow = '';
     if(sortable && calendarSort.key===c.key) arrow = `<span class="sort-arrow">${calendarSort.dir==='asc'?'▲':'▼'}</span>`;
-    return `<th style="min-width:${c.w}px" class="${sortable?'sortable':''}" data-key="${c.key}">${c.label}${arrow}</th>`;
+    return `<th class="${sortable?'sortable':''}" data-key="${c.key}">${c.label}${arrow}<span class="col-resize-handle" data-key="${c.key}"></span></th>`;
   }).join('') + (EDIT_MODE ? '<th style="width:26px"></th><th style="width:40px"></th>' : '');
 
   headRow.querySelectorAll('th.sortable').forEach(th=>{
@@ -875,6 +954,15 @@ function renderCalendarTable(){
       }
       renderCalendarTable();
     });
+  });
+
+  headRow.querySelectorAll('.col-resize-handle').forEach(handle=>{
+    handle.addEventListener('mousedown', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      startColResize(e, handle.dataset.key);
+    });
+    handle.addEventListener('click', e=>{ e.stopPropagation(); });
   });
 
   const body = document.getElementById('body-'+table);
