@@ -26,7 +26,6 @@
   #errorBanner{position:fixed;top:0;left:0;right:0;background:#B00020;color:#fff;padding:10px 20px;font-size:12.5px;font-weight:600;z-index:2000;text-align:center;}
   #errorBanner button{margin-left:14px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:4px;cursor:pointer;font-weight:600;}
 
-  /* ---------- PIN GATE ---------- */
   #pinGate{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy-light));display:flex;align-items:center;justify-content:center;z-index:1000;}
   .pin-box{background:#fff;padding:40px 36px;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.3);width:340px;text-align:center;}
   .pin-box h1{font-size:20px;margin:0 0 4px;color:var(--navy);}
@@ -38,7 +37,6 @@
   .pin-error{color:#B00020;font-size:13px;height:16px;margin-bottom:8px;}
   .pin-hint{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.5;}
 
-  /* ---------- APP SHELL ---------- */
   header{background:var(--navy);color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
   header h1{font-size:18px;margin:0;font-weight:700;}
   header .sub{font-size:11px;color:#c9d6ec;font-weight:400;}
@@ -71,12 +69,10 @@
   .chiprow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
   label.checklabel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:600;cursor:pointer;}
 
-  /* ---------- TABLE ---------- */
   .table-wrap{overflow-x:auto;background:#fff;border-radius:10px;border:1px solid var(--border);}
   table{border-collapse:collapse;width:100%;font-size:12.5px;}
   thead th{background:var(--navy);color:#fff;padding:10px 8px;text-align:left;position:sticky;top:0;white-space:nowrap;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;}
 
-  /* ---------- FROZEN HEADER + RESIZABLE COLUMNS (Release Calendar) ---------- */
   .freeze-wrap{max-height:68vh;overflow-y:auto;}
   #table-release_calendar{table-layout:fixed;}
   #table-release_calendar thead th{overflow:hidden;text-overflow:ellipsis;z-index:2;}
@@ -110,7 +106,6 @@
   .ro-field{padding:6px 5px;font-size:12.5px;min-height:16px;}
   .ro-field a{color:var(--navy-light);}
 
-  /* ---------- DASHBOARD ---------- */
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
   .kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
   .kpi .lbl{font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
@@ -129,7 +124,6 @@
   .milestone .m-type{font-size:10.5px;padding:3px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-fg);font-weight:700;white-space:nowrap;}
   .empty-note{color:var(--muted);font-size:12.5px;padding:10px 0;}
 
-  /* ---------- GO-TO-MARKET ---------- */
   #gtmGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;}
   .gtm-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:18px;}
   .gtm-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
@@ -171,7 +165,6 @@
   .gtm-summary .item .n{font-size:24px;font-weight:800;color:var(--navy);}
   .gtm-summary .item .l{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;}
 
-  /* ---------- SETTINGS ---------- */
   .settings-box{max-width:480px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;}
   .settings-box label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;}
   .settings-box input{width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px;font-size:13px;}
@@ -189,7 +182,6 @@
   <button onclick="document.getElementById('errorBanner').classList.add('hidden')">Dismiss</button>
 </div>
 
-<!-- ============ PIN GATE ============ -->
 <div id="pinGate">
   <div class="pin-box">
     <h1>Galaxsys Game Release Tracker</h1>
@@ -201,7 +193,6 @@
   </div>
 </div>
 
-<!-- ============ APP ============ -->
 <div id="app" class="hidden">
   <div id="localBanner" class="hidden">⚠ Supabase is not configured yet — running in local-only mode. Data is saved to this browser only and will not sync between users. See the setup comment at the top of this file.</div>
   <header>
@@ -216,9 +207,9 @@
     </div>
   </header>
   <nav id="tabNav">
-    <button data-tab="gtm" class="active">Go-to-Market</button>
+    <button data-tab="calendar" class="active">Release Calendar</button>
+    <button data-tab="gtm">Go-to-Market</button>
     <button data-tab="dashboard">Dashboard</button>
-    <button data-tab="calendar">Release Calendar</button>
     <button data-tab="prerelease">Pre-Release Tracker</button>
     <button data-tab="marketing">Marketing Materials</button>
     <button data-tab="partners">Top Partners</button>
@@ -227,8 +218,28 @@
   </nav>
 
   <main>
+    <!-- RELEASE CALENDAR -->
+    <section class="panel active" id="panel-calendar">
+      <div class="panel-head">
+        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort. Drag column edges to resize; drag the ⠿ handle to reorder rows.</p></div>
+        <div class="toolbar">
+          <input class="search" id="calendarSearchInput" placeholder="Search games, owners, partners…" oninput="calendarFilters.text=this.value; renderTable('release_calendar');">
+          <button class="btn secondary" onclick="resetCalendarColumnWidths()">Reset Column Widths</button>
+          <button class="btn editor-only" onclick="addRow('release_calendar')">+ Add Game</button>
+        </div>
+      </div>
+      <div class="calendar-filterbar">
+        <select id="calFilterQuarter" onchange="calendarFilters.quarter=this.value; renderTable('release_calendar');"><option value="All">All Quarters</option></select>
+        <select id="calFilterStage" onchange="calendarFilters.stage=this.value; renderTable('release_calendar');"><option value="All">All Stages</option></select>
+        <select id="calFilterType" onchange="calendarFilters.product_type=this.value; renderTable('release_calendar');"><option value="All">All Product Types</option></select>
+        <button class="btn secondary" onclick="clearCalendarFilters()">Clear Filters</button>
+      </div>
+      <div class="drag-hint editor-only" id="calendarDragHint"></div>
+      <div class="table-wrap freeze-wrap" id="calendarTableWrap"><table id="table-release_calendar"><colgroup id="colgroup-release_calendar"></colgroup><thead><tr id="head-release_calendar"></tr></thead><tbody id="body-release_calendar"></tbody></table></div>
+    </section>
+
     <!-- GO-TO-MARKET -->
-    <section class="panel active" id="panel-gtm">
+    <section class="panel" id="panel-gtm">
       <div class="panel-head">
         <div>
           <h2>Go-to-Market Pipeline</h2>
@@ -272,26 +283,6 @@
           <div id="milestoneList"></div>
         </div>
       </div>
-    </section>
-
-    <!-- RELEASE CALENDAR -->
-    <section class="panel" id="panel-calendar">
-      <div class="panel-head">
-        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort. Drag column edges to resize; drag the ⠿ handle to reorder rows.</p></div>
-        <div class="toolbar">
-          <input class="search" id="calendarSearchInput" placeholder="Search games, owners, partners…" oninput="calendarFilters.text=this.value; renderTable('release_calendar');">
-          <button class="btn secondary" onclick="resetCalendarColumnWidths()">Reset Column Widths</button>
-          <button class="btn editor-only" onclick="addRow('release_calendar')">+ Add Game</button>
-        </div>
-      </div>
-      <div class="calendar-filterbar">
-        <select id="calFilterQuarter" onchange="calendarFilters.quarter=this.value; renderTable('release_calendar');"><option value="All">All Quarters</option></select>
-        <select id="calFilterStage" onchange="calendarFilters.stage=this.value; renderTable('release_calendar');"><option value="All">All Stages</option></select>
-        <select id="calFilterType" onchange="calendarFilters.product_type=this.value; renderTable('release_calendar');"><option value="All">All Product Types</option></select>
-        <button class="btn secondary" onclick="clearCalendarFilters()">Clear Filters</button>
-      </div>
-      <div class="drag-hint editor-only" id="calendarDragHint"></div>
-      <div class="table-wrap freeze-wrap" id="calendarTableWrap"><table id="table-release_calendar"><colgroup id="colgroup-release_calendar"></colgroup><thead><tr id="head-release_calendar"></tr></thead><tbody id="body-release_calendar"></tbody></table></div>
     </section>
 
     <!-- PRE-RELEASE -->
@@ -361,34 +352,11 @@
 </div>
 
 <script>
-/* =========================================================================
-   SETUP (read me first)
-   1. Create a free project at https://supabase.com
-   2. Open the SQL editor and run the contents of schema.sql (shipped alongside
-      this file) to create the tables + realtime + permissive RLS policies +
-      the default PINs.
-   3. In Supabase: Project Settings -> API, copy the "Project URL" and the
-      "anon public" key into SUPABASE_URL / SUPABASE_ANON_KEY below. These are
-      meant to be public client-side values, not secrets.
-   4. Push this file (as index.html) + schema.sql to a GitHub repo and enable
-      GitHub Pages.
-   5. Open the deployed page, unlock with the default Editor PIN (260119),
-      go to the Settings tab, and set your own Viewer / Editor PINs there —
-      no code editing required, and the change syncs to everyone once saved.
-   If you skip Supabase setup, the app still works for a single browser using
-   localStorage only (a yellow banner will remind you it isn't synced), and
-   the default PINs below apply (Viewer: 2026, Editor: 260119).
-   ========================================================================= */
-
 const SUPABASE_URL = 'https://smtskvysygsblojqrpjh.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable__61Y4EAuMmxwiTgAt8Nk0A__LGg7oAA';
 
-// Fallback PINs used only when Supabase isn't configured / reachable.
-// Default viewer PIN: 2026   |   Default editor PIN: 260119
 const VIEW_PIN_HASH = '158a323a7ba44870f23d96f1516dd70aa48e9a72db4ebb026b0a89e212a208ab';
 const EDIT_PIN_HASH = '155997a3abd51a8faef47e919467668a130e6c8b6c72403935f30766c150f6a7';
-
-/* ========================= ERROR REPORTING ========================= */
 
 function reportError(msg){
   console.error(msg);
@@ -396,15 +364,13 @@ function reportError(msg){
     const b = document.getElementById('errorBanner');
     const t = document.getElementById('errorBannerText');
     if(b && t){ t.textContent = msg; b.classList.remove('hidden'); }
-  } catch(e){ /* ignore */ }
+  } catch(e){ }
 }
 window.addEventListener('error', e=>reportError('Something went wrong: ' + (e.message || e)));
 window.addEventListener('unhandledrejection', e=>{
   const reason = e.reason && e.reason.message ? e.reason.message : e.reason;
   reportError('Something went wrong: ' + reason);
 });
-
-/* ========================= PIN / AUTH ========================= */
 
 async function sha256Hex(text){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -429,7 +395,7 @@ async function resolvePinHashes(){
       if(override.view) currentViewPinHash = override.view;
       if(override.edit) currentEditPinHash = override.edit;
     }
-  } catch(e){ /* ignore corrupt local override */ }
+  } catch(e){ }
 
   if(!isSupabaseConfigured()) return;
   try{
@@ -528,9 +494,7 @@ async function saveNewPins(){
   document.getElementById('newEditPin').value = '';
 }
 
-/* ========================= DATA MODEL ========================= */
-
-const SEED = {"release_calendar": [{"quarter": "Q1", "game_name": "King of Ocean", "stage": "Production", "product_type": "Slot", "product_owner": "Hovak Khyureghyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-03-06", "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": "Yes", "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q1", "game_name": "Deep Sea Wild", "stage": "Production", "product_type": "Slot", "product_owner": "Hayk Sargsyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-03-06", "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": "Yes", "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q1", "game_name": "Coin Rush", "stage": "Production", "product_type": "Slot", "product_owner": "Hovak Khyureghyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-03-06", "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": "Yes", "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q1", "game_name": "Gol ya Pooch", "stage": "Production", "product_type": "Table Game", "product_owner": "Hayk Sargsyan", "pm_assigned": null, "exclusive_partner": "Cannonbet", "assets_ready": "Ready", "planned_production_date": "2026-03-03", "toto_live_date": "-", "albatros_live_date": "2026-06-15", "pre_release_window": "-", "planned_global_launch": null, "partner_email": "Yes", "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q1", "game_name": "Fruity Wild 5,            10 lines", "stage": "Production", "product_type": "Slot", "product_owner": "Hovak Khyureghyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-04-28", "toto_live_date": "2026-05-28", "albatros_live_date": "2026-06-20", "pre_release_window": null, "planned_global_launch": "2026-05-25", "partner_email": "No", "game_id": null, "activation_ticket": null, "notes": "Fruity Wilds 10 line Project Health & Risk Management - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Instawin/ Swipe", "stage": "Production", "product_type": "Fast", "product_owner": "Hayk Varosyan", "pm_assigned": "Lilit Hovhannisyan", "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-04-30", "toto_live_date": "-", "albatros_live_date": "2026-06-08", "pre_release_window": "5-15- Jun", "planned_global_launch": "2026-06-16", "partner_email": "June 3 / 16", "game_id": "betongamesinstawin", "activation_ticket": "CHG-339387", "notes": "Instawin (Swipe) Fast game - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Infinity", "stage": "Production", "product_type": "Fast", "product_owner": "Hayk Sargsyan", "pm_assigned": "Kristina Kirakosyan", "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-05-15", "toto_live_date": "-", "albatros_live_date": "2026-06-08", "pre_release_window": "15-25-Jun", "planned_global_launch": "2026-06-29", "partner_email": "June 19 / 29", "game_id": "betongamesinfinity", "activation_ticket": null, "notes": "Infinity Project Health & Risk Management - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "American Roulete", "stage": "Production", "product_type": "Fast", "product_owner": "Sevak Amin", "pm_assigned": "Lilit Hovhannisyan", "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-05-30", "toto_live_date": "2026-06-04", "albatros_live_date": "2026-06-15", "pre_release_window": "1-10-Jun", "planned_global_launch": "2026-06-22", "partner_email": "June 15 / 22", "game_id": "betongamesamericanroulette", "activation_ticket": null, "notes": "American Roulette - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Handigo", "stage": "Production", "product_type": "Slot", "product_owner": "Hayk Sargsyan", "pm_assigned": "Lilit Hovhannisyan", "exclusive_partner": null, "assets_ready": "In Progress", "planned_production_date": "2026-06-22", "toto_live_date": "2026-06-23", "albatros_live_date": "2026-06-30", "pre_release_window": "1-10 Jul", "planned_global_launch": "2026-07-20", "partner_email": "Jul 10 / 20", "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Crashback", "stage": "Production", "product_type": "Promo Tool", "product_owner": "Sevak Amin", "pm_assigned": "Lilit Hovhannisyan", "exclusive_partner": null, "assets_ready": "Yes", "planned_production_date": "2026-05-15", "toto_live_date": "-", "albatros_live_date": "-", "pre_release_window": "-", "planned_global_launch": null, "partner_email": "Yes", "game_id": null, "activation_ticket": null, "notes": "https://confluence.digitain.com/display/GAL/CrashBack+Promo+tool", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Aviabom", "stage": "Production", "product_type": "Fast", "product_owner": "Sevak Amin", "pm_assigned": "Ani Mkrtchyan", "exclusive_partner": "Casibom", "assets_ready": "Yes", "planned_production_date": "2026-05-06", "toto_live_date": "-", "albatros_live_date": "-", "pre_release_window": "-", "planned_global_launch": "-", "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Rise of Frog", "stage": "Staging", "product_type": "Slot", "product_owner": "Hovak Khyureghyan", "pm_assigned": "Kristina Kirakosyan", "exclusive_partner": null, "assets_ready": "Ready", "planned_production_date": "2026-06-10", "toto_live_date": "15-19 June", "albatros_live_date": "21-30 June", "pre_release_window": "1-10 Jul", "planned_global_launch": "13- Jul updated 16-Jul", "partner_email": "Jul 3 / 13", "game_id": "galaxsysslotriseoffrog", "activation_ticket": null, "notes": "Rise of Frog Project Health & Risk Management - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Jackpot", "stage": null, "product_type": "Promo Tool", "product_owner": "Hayk Varosyan", "pm_assigned": "Lilit Hovhannisyan", "exclusive_partner": null, "assets_ready": "In Progress", "planned_production_date": "2026-06-30", "toto_live_date": "-", "albatros_live_date": "-", "pre_release_window": "-", "planned_global_launch": null, "partner_email": "2026-06-30", "game_id": null, "activation_ticket": null, "notes": "Jackpot Project Health & Risk Management - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Match day", "stage": "Production", "product_type": "Promo Tool", "product_owner": "Sevak Amin", "pm_assigned": "Kristina Kirakosyan", "exclusive_partner": null, "assets_ready": "In Progress", "planned_production_date": "2026-06-09", "toto_live_date": "-", "albatros_live_date": "-", "pre_release_window": "-", "planned_global_launch": "2026-06-19", "partner_email": "June 18 -19", "game_id": null, "activation_ticket": null, "notes": "Match Day Project Health & Risk Management - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Egyptian Legends", "stage": "Testing", "product_type": "Slot", "product_owner": "Vahagn Grigoryan", "pm_assigned": "Ani Mkrtchyan", "exclusive_partner": null, "assets_ready": "In Progress", "planned_production_date": "2026-07-31", "toto_live_date": "1-15 aug", "albatros_live_date": "15-22 aug", "pre_release_window": "1-10 sep", "planned_global_launch": "2026-09-15", "partner_email": null, "game_id": null, "activation_ticket": null, "notes": "Egyptian Legends Project Health & Risk Management - Galaxsys - Confluence", "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Cosmo Saga", "stage": "Production", "product_type": "Slot", "product_owner": "Hayk Sargsyan", "pm_assigned": "Lilit Hovhannisyan", "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Ottoman Legends", "stage": "Development", "product_type": "Slot", "product_owner": "Vahagn Grigoryan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": "No", "planned_production_date": "2026-07-20", "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q2", "game_name": "Aviabom", "stage": "Production", "product_type": null, "product_owner": null, "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Gift Box", "stage": "QA", "product_type": "Promo Tool", "product_owner": "Hayk Sargsyan", "pm_assigned": "Ani Mkrtchyan", "exclusive_partner": null, "assets_ready": "No", "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Wingo / Aviabom 2", "stage": "Development", "product_type": "Fast", "product_owner": "Sevak Amin", "pm_assigned": "Ani Mkrtchyan", "exclusive_partner": null, "assets_ready": "No", "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Cat vs Dog", "stage": null, "product_type": null, "product_owner": "Hayk Sargsyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Tower Rush 2", "stage": "Development", "product_type": "Fast", "product_owner": "Hovak Khyureghyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Ice Fish", "stage": "Development", "product_type": "Slot", "product_owner": "Hovak Khyureghyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Fruty lines", "stage": "Development", "product_type": "Slot", "product_owner": "Sevak Amin", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Wonder Forest", "stage": "Development", "product_type": "Slot", "product_owner": "Hayk Varosyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "BlackJack", "stage": "Development", "product_type": "Fast", "product_owner": null, "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "1 reel slot", "stage": "Development", "product_type": "Slot", "product_owner": "Hayk Varosyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "3x3", "stage": "Development", "product_type": "Slot", "product_owner": "Hovak Khyureghyan", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}, {"quarter": "Q3", "game_name": "Ice Tower", "stage": "Development", "product_type": "Fast", "product_owner": "Sevak Amin", "pm_assigned": null, "exclusive_partner": null, "assets_ready": null, "planned_production_date": null, "toto_live_date": null, "albatros_live_date": null, "pre_release_window": null, "planned_global_launch": null, "partner_email": null, "game_id": null, "activation_ticket": null, "notes": null, "push_notifications_ready": null}], "pre_release": [{"pm": "Meri", "game": "Infinity", "partner": "Premierbet", "date_window": "2026-06-22", "market": "Africa", "notes": "social 94% rtp"}, {"pm": "Arto", "game": "Infinity", "partner": "Betify", "date_window": "15-25 Jun", "market": "Europe", "notes": null}, {"pm": "Arto", "game": "American Roulette", "partner": "Sunflower", "date_window": "15-30 Jun", "market": "Socialcasino", "notes": null}, {"pm": "Arto", "game": "Rise of Frogs : Pre-release", "partner": "CrownCoins", "date_window": "06-16 Jul", "market": "Socialcasino", "notes": null}, {"pm": "Mika", "game": "Rise of Frogs : Pre-release", "partner": "1win", "date_window": "1-10 Jul", "market": "worldwide", "notes": null}, {"pm": "Raf", "game": "Match Day", "partner": "Pishbini", "date_window": null, "market": "Iran", "notes": null}, {"pm": "Raf", "game": "Match Day", "partner": "Portbet", "date_window": null, "market": "Iran", "notes": null}, {"pm": "Raf", "game": "Match Day", "partner": "Metabettv", "date_window": null, "market": "Bolivia", "notes": null}, {"pm": "Raf", "game": "Match Day", "partner": "Bet Vip", "date_window": null, "market": "Mexico", "notes": null}], "marketing_materials": [{"game": "Instawin/ Swipe", "website": true, "ca": true, "rules": null, "assets_folder": "Galaxsys Sharepoint - Documents - InstaWiin - All Documents", "demo_link": "https://shorturl.at/yHqnh", "client_area": "Instawin", "teaser": "Galaxsys Sharepoint - Documents - Videos - All Documents", "presentation": null}, {"game": "Infinity", "website": true, "ca": true, "rules": null, "assets_folder": "Galaxsys Sharepoint - Documents - Infinity Crash - All Documents", "demo_link": "https://danybet.com/en/play/fun/infinity-casino", "client_area": "Infinity", "teaser": null, "presentation": null}, {"game": "American Roulete", "website": true, "ca": true, "rules": null, "assets_folder": "Galaxsys Sharepoint - Documents - American Roulette - All Documents", "demo_link": "https://shorturl.at/aMxNs", "client_area": "American Roulette", "teaser": null, "presentation": null}, {"game": "Handigo", "website": false, "ca": false, "rules": null, "assets_folder": "Galaxsys Sharepoint - Documents - Gol Ya Pooch - All Documents", "demo_link": "Handigo by GALAXSYS • Casino Games Provider", "client_area": null, "teaser": null, "presentation": null}, {"game": "Crashback", "website": false, "ca": false, "rules": null, "assets_folder": "Galaxsys Sharepoint - Documents - Crashback - All Documents", "demo_link": null, "client_area": null, "teaser": null, "presentation": "Product Marketing - CRASHBACK_Promo Tool Presenation.pdf - All Documents"}, {"game": "Jackpot", "website": false, "ca": true, "rules": null, "assets_folder": "Galaxsys Sharepoint - Jackpot1 - All Documents", "demo_link": null, "client_area": null, "teaser": null, "presentation": null}, {"game": "Match day", "website": false, "ca": false, "rules": null, "assets_folder": "Galaxsys Sharepoint - Documents - Match Day - All Documents", "demo_link": null, "client_area": null, "teaser": null, "presentation": null}, {"game": "Rise of Frog", "website": true, "ca": false, "rules": null, "assets_folder": "Galaxsys Sharepoint - Documents - Rise of Frog Book's Legacy - All Documents", "demo_link": "https://shorturl.at/lCOco", "client_area": "Rise of Frog: Book's Legacy", "teaser": null, "presentation": null}, {"game": "Egyptian Legends", "website": false, "ca": false, "rules": null, "assets_folder": null, "demo_link": null, "client_area": null, "teaser": null, "presentation": null}, {"game": "Cosmo Saga", "website": false, "ca": false, "rules": null, "assets_folder": null, "demo_link": null, "client_area": null, "teaser": null, "presentation": null}, {"game": "Ottoman Legends", "website": false, "ca": false, "rules": null, "assets_folder": null, "demo_link": null, "client_area": null, "teaser": null, "presentation": null}], "top_partners": [{"rank": 1, "partner": "1winaxis.prod", "players_period1": 149180, "players_period2": 1445155, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 2, "partner": "crorebet_prod", "players_period1": 43424, "players_period2": 775433, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 3, "partner": "QTech", "players_period1": 32711, "players_period2": 720333, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 4, "partner": "ApuestasRoyal", "players_period1": 136399, "players_period2": 719588, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 5, "partner": "Huidu", "players_period1": 117416, "players_period2": 718176, "deal_owner": "Galaxsys", "account_manager": "Yana Gasparyan"}, {"rank": 6, "partner": "CrownCoins", "players_period1": 170523, "players_period2": 687691, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 7, "partner": "1xBet", "players_period1": 91929, "players_period2": 671668, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 8, "partner": "GFG", "players_period1": 15587, "players_period2": 291527, "deal_owner": null, "account_manager": null}, {"rank": 9, "partner": "Atlas", "players_period1": 11591, "players_period2": 290274, "deal_owner": null, "account_manager": null}, {"rank": 10, "partner": "Bingoplus", "players_period1": 9025, "players_period2": 274426, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 11, "partner": "TotogamingAm", "players_period1": 110838, "players_period2": 267694, "deal_owner": "Digitain", "account_manager": "Rafael Ovsepyan"}, {"rank": 12, "partner": "BetNPlay", "players_period1": 49131, "players_period2": 266087, "deal_owner": null, "account_manager": null}, {"rank": 13, "partner": "Uplatform - Melbet", "players_period1": 32989, "players_period2": 251115, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 14, "partner": "4rabet_prod", "players_period1": 43973, "players_period2": 237441, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 15, "partner": "Pinup", "players_period1": 11877, "players_period2": 235958, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 16, "partner": "GrandPashaBet", "players_period1": 15065, "players_period2": 222357, "deal_owner": "Digitain", "account_manager": "Rafael Ovsepyan"}, {"rank": 17, "partner": "Parimatch", "players_period1": 22847, "players_period2": 221280, "deal_owner": "Digitain", "account_manager": "Rafael Ovsepyan"}, {"rank": 18, "partner": "Betclic CI", "players_period1": 52509, "players_period2": 220831, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 19, "partner": "Betika Kenya", "players_period1": 15151, "players_period2": 220044, "deal_owner": "Galaxsys", "account_manager": "Elene Dalakishvili"}, {"rank": 20, "partner": "Metabet TV", "players_period1": 23566, "players_period2": 200228, "deal_owner": "Digitain", "account_manager": null}, {"rank": 21, "partner": "Bizbon", "players_period1": 18555, "players_period2": 196770, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 22, "partner": "BetMexico MX", "players_period1": 20610, "players_period2": 194580, "deal_owner": null, "account_manager": null}, {"rank": 23, "partner": "Kareco Holdings", "players_period1": 10735, "players_period2": 179269, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 24, "partner": "Pinco", "players_period1": 15090, "players_period2": 177404, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 25, "partner": "Betpawa CM", "players_period1": 33308, "players_period2": 166530, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 26, "partner": "hd3gsapi", "players_period1": 5089, "players_period2": 160855, "deal_owner": "Galaxsys", "account_manager": "Yana Gasparyan"}, {"rank": 27, "partner": "Bet VIP", "players_period1": 18369, "players_period2": 156785, "deal_owner": "Digitain", "account_manager": null}, {"rank": 28, "partner": "Betpawa TZ", "players_period1": 18538, "players_period2": 149190, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 29, "partner": "Azar247", "players_period1": 3562, "players_period2": 143224, "deal_owner": "Digitain", "account_manager": null}, {"rank": 30, "partner": "BetBoom", "players_period1": 24319, "players_period2": 132899, "deal_owner": null, "account_manager": null}, {"rank": 31, "partner": "FortuneCoins", "players_period1": 4692, "players_period2": 122581, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 32, "partner": "Inplaynet Softswiss", "players_period1": 5781, "players_period2": 116867, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 33, "partner": "Olimp", "players_period1": 5586, "players_period2": 112964, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 34, "partner": "Betera", "players_period1": 9640, "players_period2": 104458, "deal_owner": "Digitain", "account_manager": null}, {"rank": 35, "partner": "Pariplay/Premierbet/Cameroon", "players_period1": 10027, "players_period2": 103456, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 36, "partner": "TimelessTech", "players_period1": 7456, "players_period2": 102113, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 37, "partner": "Takbet", "players_period1": 8722, "players_period2": 94349, "deal_owner": "Digitain", "account_manager": null}, {"rank": 38, "partner": "Movewinbet", "players_period1": 6935, "players_period2": 94036, "deal_owner": null, "account_manager": null}, {"rank": 39, "partner": "Betpawa UG", "players_period1": 11434, "players_period2": 90180, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 40, "partner": "Ganamos Galaxsys", "players_period1": 19089, "players_period2": 89430, "deal_owner": "Digitain", "account_manager": null}, {"rank": 41, "partner": "TradicionalBet", "players_period1": 13483, "players_period2": 87874, "deal_owner": null, "account_manager": null}, {"rank": 42, "partner": "lonestarcasino", "players_period1": 6692, "players_period2": 86085, "deal_owner": null, "account_manager": null}, {"rank": 43, "partner": "Betify", "players_period1": 16020, "players_period2": 85956, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 44, "partner": "triunfobet", "players_period1": 31816, "players_period2": 85426, "deal_owner": "Galaxsys", "account_manager": "Yana Gasparyan"}, {"rank": 45, "partner": "Casibom", "players_period1": 4917, "players_period2": 81491, "deal_owner": "Digitain", "account_manager": null}, {"rank": 46, "partner": "Zula", "players_period1": 2400, "players_period2": 81180, "deal_owner": null, "account_manager": null}, {"rank": 47, "partner": "realprize", "players_period1": 7191, "players_period2": 78759, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 48, "partner": "kemerBet", "players_period1": 6752, "players_period2": 76148, "deal_owner": null, "account_manager": null}, {"rank": 49, "partner": "Honore Brands", "players_period1": 10545, "players_period2": 69178, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 50, "partner": "Pariplay/Premierbet/Tanzania", "players_period1": 6799, "players_period2": 69172, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 51, "partner": "Betpawa MW", "players_period1": 13531, "players_period2": 68826, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 52, "partner": "Betpawa ZM", "players_period1": 10523, "players_period2": 68671, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 53, "partner": "Lottu", "players_period1": 5339, "players_period2": 68203, "deal_owner": null, "account_manager": null}, {"rank": 54, "partner": "Pixbet Direct", "players_period1": 6776, "players_period2": 67612, "deal_owner": null, "account_manager": null}, {"rank": 55, "partner": "Topx", "players_period1": 8369, "players_period2": 66980, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 56, "partner": "MeritKing", "players_period1": 2438, "players_period2": 62897, "deal_owner": "Digitain", "account_manager": null}, {"rank": 57, "partner": "yolo247", "players_period1": 3703, "players_period2": 61902, "deal_owner": null, "account_manager": null}, {"rank": 58, "partner": "Spingranny", "players_period1": 3216, "players_period2": 58646, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 59, "partner": "GameKong", "players_period1": 5466, "players_period2": 58280, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 60, "partner": "Betpawa CD", "players_period1": 9686, "players_period2": 55293, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 61, "partner": "Slot7777", "players_period1": 2632, "players_period2": 52398, "deal_owner": null, "account_manager": null}, {"rank": 62, "partner": "Betfa", "players_period1": 4964, "players_period2": 52294, "deal_owner": null, "account_manager": null}, {"rank": 63, "partner": "Winbeatz", "players_period1": 5318, "players_period2": 50861, "deal_owner": null, "account_manager": null}, {"rank": 64, "partner": "Cratosroyalbet", "players_period1": 1239, "players_period2": 48967, "deal_owner": "Digitain", "account_manager": null}, {"rank": 65, "partner": "SNK", "players_period1": 1635, "players_period2": 47173, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}, {"rank": 66, "partner": "Leon", "players_period1": 5796, "players_period2": 45183, "deal_owner": null, "account_manager": null}, {"rank": 67, "partner": "Betbuq", "players_period1": 1032, "players_period2": 44287, "deal_owner": null, "account_manager": null}, {"rank": 68, "partner": "Ecuabet", "players_period1": 2893, "players_period2": 44145, "deal_owner": null, "account_manager": null}, {"rank": 69, "partner": "Pariplay/Premierbet/Mali", "players_period1": 3101, "players_period2": 43736, "deal_owner": "Galaxsys", "account_manager": "Meri Mkrtychyan"}, {"rank": 70, "partner": "Pridebet", "players_period1": 9874, "players_period2": 41940, "deal_owner": null, "account_manager": null}, {"rank": 71, "partner": "WOWVEGAS", "players_period1": 1588, "players_period2": 40157, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 72, "partner": "Linebet", "players_period1": 4191, "players_period2": 39449, "deal_owner": "Galaxsys", "account_manager": "Mika Poghosyan"}, {"rank": 73, "partner": "Pradabet", "players_period1": 4484, "players_period2": 38814, "deal_owner": "Digitain", "account_manager": null}, {"rank": 74, "partner": "Apostala", "players_period1": 2098, "players_period2": 38759, "deal_owner": null, "account_manager": null}, {"rank": 75, "partner": "Azarlatino PY", "players_period1": 3633, "players_period2": 36023, "deal_owner": "Digitain", "account_manager": null}, {"rank": 76, "partner": "Sportzino", "players_period1": 1224, "players_period2": 35569, "deal_owner": "Digitain", "account_manager": null}, {"rank": 77, "partner": "Zplay", "players_period1": 5801, "players_period2": 34651, "deal_owner": null, "account_manager": null}, {"rank": 78, "partner": "Festwin", "players_period1": 5616, "players_period2": 34103, "deal_owner": "Digitain", "account_manager": null}, {"rank": 79, "partner": "Bahisbey", "players_period1": 9752, "players_period2": 33695, "deal_owner": null, "account_manager": null}, {"rank": 80, "partner": "BetGit", "players_period1": 6168, "players_period2": 32871, "deal_owner": null, "account_manager": null}, {"rank": 81, "partner": "Betconnection", "players_period1": 1940, "players_period2": 31215, "deal_owner": null, "account_manager": null}, {"rank": 82, "partner": "PrideSpins Ghana", "players_period1": 4040, "players_period2": 30665, "deal_owner": null, "account_manager": null}, {"rank": 83, "partner": "Lucky Star", "players_period1": 1305, "players_period2": 30445, "deal_owner": null, "account_manager": null}, {"rank": 84, "partner": "crorewin", "players_period1": 8703, "players_period2": 30396, "deal_owner": null, "account_manager": null}, {"rank": 85, "partner": "Maxwin", "players_period1": 630, "players_period2": 29566, "deal_owner": null, "account_manager": null}, {"rank": 86, "partner": "glorycasino_asi", "players_period1": 2740, "players_period2": 29208, "deal_owner": null, "account_manager": null}, {"rank": 87, "partner": "Bonuskong", "players_period1": 10530, "players_period2": 27226, "deal_owner": null, "account_manager": null}, {"rank": 88, "partner": "GiroWin", "players_period1": 4944, "players_period2": 26945, "deal_owner": null, "account_manager": null}, {"rank": 89, "partner": "Betwoon", "players_period1": 1113, "players_period2": 25454, "deal_owner": null, "account_manager": null}, {"rank": 90, "partner": "Vulkanbet", "players_period1": 786, "players_period2": 24685, "deal_owner": "Galaxsys", "account_manager": null}, {"rank": 91, "partner": "Betesen", "players_period1": 25, "players_period2": 23645, "deal_owner": null, "account_manager": null}, {"rank": 92, "partner": "Odds96", "players_period1": 4976, "players_period2": 23286, "deal_owner": null, "account_manager": null}, {"rank": 93, "partner": "AT.99", "players_period1": 5368, "players_period2": 22128, "deal_owner": null, "account_manager": null}, {"rank": 94, "partner": "Corgibet", "players_period1": 2769, "players_period2": 21730, "deal_owner": null, "account_manager": null}, {"rank": 95, "partner": "Betpawa KE", "players_period1": 3716, "players_period2": 21463, "deal_owner": "Galaxsys", "account_manager": "Artavazd Avetyan"}], "performance_snapshot": [{"game": "Instawin", "period": "16.06-23.06 (7 Day)", "ggr": 4259, "players": 10687}]};
+const SEED = {"release_calendar": [], "pre_release": [], "marketing_materials": [], "top_partners": [], "performance_snapshot": []};
 
 const LISTS = {
   quarter: ['Q1','Q2','Q3','Q4'],
@@ -641,11 +605,7 @@ let calendarSort = { key:null, dir:'asc' };
 let draggedCalendarRowId = null;
 let calendarColWidths = {};
 
-/* ========================= BOOT ========================= */
-
 async function boot(){
-  // Wire up navigation and static UI first so the app is usable even if
-  // data loading below hits a problem.
   try{ setupTabs(); } catch(e){ reportError('Failed to set up navigation: ' + (e.message||e)); }
   try{ buildGtmQuarterChips(); } catch(e){ reportError('Failed to set up filters: ' + (e.message||e)); }
   try{ populateCalendarFilterOptions(); } catch(e){ reportError('Failed to set up calendar filters: ' + (e.message||e)); }
@@ -707,9 +667,11 @@ async function loadAllTables(){
         if(data && data.length){
           rows = data;
         } else {
-          const seedRows = SEED[t].map(r => ({...r, id: crypto.randomUUID()}));
-          const {error: insErr} = await supa.from(t).insert(seedRows);
-          if(insErr) console.warn('Seed insert failed for', t, insErr);
+          const seedRows = (SEED[t]||[]).map(r => ({...r, id: crypto.randomUUID()}));
+          if(seedRows.length){
+            const {error: insErr} = await supa.from(t).insert(seedRows);
+            if(insErr) console.warn('Seed insert failed for', t, insErr);
+          }
           rows = seedRows;
         }
       } catch(e){
@@ -724,7 +686,7 @@ async function loadAllTables(){
         console.warn('Corrupt local data for', t, '- reseeding', e);
         rows = null;
       }
-      if(!rows) rows = SEED[t].map(r => ({...r, id: crypto.randomUUID()}));
+      if(!rows) rows = (SEED[t]||[]).map(r => ({...r, id: crypto.randomUUID()}));
     }
     state[t] = rows;
     if(t === 'release_calendar'){
@@ -740,8 +702,6 @@ function persistLocal(table){
   catch(e){ console.warn('Could not persist locally', table, e); }
 }
 
-/* ========================= TABS ========================= */
-
 function setupTabs(){
   document.querySelectorAll('#tabNav button').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -752,8 +712,6 @@ function setupTabs(){
     });
   });
 }
-
-/* ========================= UTIL ========================= */
 
 function escapeHtml(s){
   return String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -768,8 +726,6 @@ function badgeSpan(text, colorPair){
   const style = colorPair ? `background:var(${colorPair[0]});color:var(${colorPair[1]});` : 'background:#EEF2F8;color:var(--navy);';
   return `<span class="badge" style="${style}">${escapeHtml(text)}</span>`;
 }
-
-/* ========================= RENDER (shared tables) ========================= */
 
 function renderAll(){
   Object.keys(TABLES).forEach(t=>{
@@ -804,8 +760,6 @@ function renderTable(table, filterOverride){
   });
 }
 
-/* ---- Release Calendar: sortable header + column filters + drag reorder + column resize ---- */
-
 function populateCalendarFilterOptions(){
   const qSel = document.getElementById('calFilterQuarter');
   const sSel = document.getElementById('calFilterStage');
@@ -826,8 +780,6 @@ function clearCalendarFilters(){
   });
   renderTable('release_calendar');
 }
-
-/* ---- column widths (per-browser UI preference, resizable by dragging column edges) ---- */
 
 function loadCalendarColWidths(){
   try{
@@ -925,6 +877,11 @@ function sortCalendarRows(rows){
   });
 }
 
+/* ============ FIX: header row now puts the drag-handle placeholder FIRST
+   to match the body rows, which put the ⠿ drag cell first. Previously both
+   placeholder cells were appended only at the END of the header, causing
+   every header label to sit one column to the right of its real data
+   whenever Editor Mode was active. ============ */
 function renderCalendarTable(){
   const table = 'release_calendar';
   const cfg = TABLES[table];
@@ -933,12 +890,15 @@ function renderCalendarTable(){
 
   buildCalendarColgroup(cfg);
 
-  headRow.innerHTML = cfg.columns.map(c=>{
+  const leadTh = EDIT_MODE ? '<th style="width:26px"></th>' : '';
+  const trailTh = EDIT_MODE ? '<th style="width:40px"></th>' : '';
+
+  headRow.innerHTML = leadTh + cfg.columns.map(c=>{
     const sortable = CALENDAR_SORTABLE_KEYS.includes(c.key);
     let arrow = '';
     if(sortable && calendarSort.key===c.key) arrow = `<span class="sort-arrow">${calendarSort.dir==='asc'?'▲':'▼'}</span>`;
     return `<th class="${sortable?'sortable':''}" data-key="${c.key}" style="border-right:1px solid rgba(255,255,255,.25)">${c.label}${arrow}<span class="col-resize-handle" data-key="${c.key}"></span></th>`;
-  }).join('') + (EDIT_MODE ? '<th style="width:26px"></th><th style="width:40px"></th>' : '');
+  }).join('') + trailTh;
 
   headRow.querySelectorAll('th.sortable').forEach(th=>{
     th.addEventListener('click', ()=>{
@@ -1210,15 +1170,10 @@ function applyBoolBadge(selectEl, value){
   else if(value===false){ selectEl.style.background='var(--red-bg)'; selectEl.style.color='var(--red-fg)'; selectEl.style.fontWeight='700'; }
 }
 
-/* ========================= CRUD ========================= */
-
 async function commit(table, row, sourceView){
   persistLocal(table);
   renderDashboard();
   if(table==='release_calendar'){
-    // Refresh whichever view the edit did NOT originate from, so both stay in
-    // sync without rebuilding (and losing focus/cursor in) the one the user
-    // is actively typing in.
     if(sourceView !== 'gtm') renderGTM();
     if(sourceView !== 'table') renderTable('release_calendar');
   }
@@ -1264,8 +1219,6 @@ async function deleteRow(table, id){
   }
 }
 
-/* ========================= REALTIME ========================= */
-
 function subscribeRealtime(){
   Object.keys(TABLES).forEach(table=>{
     supa.channel(table+'-changes')
@@ -1290,8 +1243,6 @@ function handleRealtime(table, payload){
   renderDashboard();
   if(table==='release_calendar') renderGTM();
 }
-
-/* ========================= GO-TO-MARKET STATUS LOGIC ========================= */
 
 function readinessStatus(value){
   const v = (value||'').toString().trim();
@@ -1328,8 +1279,6 @@ function computeProgress(steps){
   const done = applicable.filter(s=>s.state==='done').length;
   return Math.round(done/applicable.length*100);
 }
-
-/* ========================= GO-TO-MARKET RENDER ========================= */
 
 function buildGtmQuarterChips(){
   const wrap = document.getElementById('gtmQuarterChips');
@@ -1467,8 +1416,6 @@ function renderGtmCard(row){
 
   return card;
 }
-
-/* ========================= DASHBOARD ========================= */
 
 let charts = {};
 function renderDashboard(){
