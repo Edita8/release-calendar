@@ -504,6 +504,19 @@ const LISTS = {
   push_ready: ['Ready','In Progress','No']
 };
 
+/* Fixed list of partner managers for the Pre-Release Tracker's PM dropdown. */
+const PM_LIST = ['Artavazd','Mikael','Meri','Yana','Rafael'];
+
+/* Returns the current, deduplicated, alphabetised list of game names from
+   the Release Calendar tab. Called fresh every time the Pre-Release Tracker's
+   Game dropdown is built, so newly added games show up automatically. */
+function getReleaseCalendarGameNames(){
+  const names = (state.release_calendar || [])
+    .map(r => (r.game_name || '').trim())
+    .filter(Boolean);
+  return [...new Set(names)].sort((a,b)=>a.localeCompare(b));
+}
+
 const STAGE_COLORS = {
   Planning:['--blue-bg','--blue-fg'], Design:['--blue-bg','--blue-fg'],
   Development:['--gray-bg','--gray-fg'], Testing:['--red-bg','--red-fg'],
@@ -538,8 +551,8 @@ const TABLES = {
   pre_release: {
     label:'Pre-Release Tracker',
     columns:[
-      {key:'pm', label:'PM', type:'text', w:90},
-      {key:'game', label:'Game', type:'text', w:180},
+      {key:'pm', label:'PM', type:'select', options:PM_LIST, w:110},
+      {key:'game', label:'Game', type:'select', dynamicOptions:getReleaseCalendarGameNames, w:200},
       {key:'partner', label:'Partner', type:'text', w:140},
       {key:'date_window', label:'Date / Window', type:'text', w:130},
       {key:'market', label:'Market', type:'text', w:120},
@@ -1066,12 +1079,26 @@ function makeField(table, row, col, sourceView){
     el = document.createElement('select');
     const blank = document.createElement('option'); blank.value=''; blank.textContent='—';
     el.appendChild(blank);
-    col.options.forEach(opt=>{
+    /* If the column defines dynamicOptions, recompute the list fresh at
+       render time (e.g. pulling live game names from Release Calendar)
+       instead of relying on a fixed options array. */
+    const opts = typeof col.dynamicOptions === 'function' ? col.dynamicOptions() : (col.options || []);
+    opts.forEach(opt=>{
       const o = document.createElement('option');
       o.value = opt; o.textContent = opt;
       if((row[col.key]||'').trim()===opt) o.selected = true;
       el.appendChild(o);
     });
+    /* If the row's saved value isn't in the current options list (e.g. a
+       game that was renamed or removed from Release Calendar), keep it
+       visible as its own option so existing data isn't silently hidden. */
+    const currentVal = (row[col.key]||'').trim();
+    if(currentVal && !opts.includes(currentVal)){
+      const o = document.createElement('option');
+      o.value = currentVal; o.textContent = currentVal + ' (not in list)';
+      o.selected = true;
+      el.appendChild(o);
+    }
     applyBadge(el, col, row[col.key]);
     el.addEventListener('change', ()=>{ row[col.key]=el.value; applyBadge(el,col,el.value); commit(table,row,sourceView); });
   } else if(col.type==='bool'){
@@ -1176,6 +1203,9 @@ async function commit(table, row, sourceView){
   if(table==='release_calendar'){
     if(sourceView !== 'gtm') renderGTM();
     if(sourceView !== 'table') renderTable('release_calendar');
+    /* Game names may have changed — refresh the Pre-Release Tracker's
+       Game dropdown so it stays in sync with Release Calendar. */
+    renderTable('pre_release');
   }
   if(!ONLINE_MODE) return;
   const {error} = await supa.from(table).update(row).eq('id', row.id);
@@ -1189,7 +1219,10 @@ async function addRow(table){
   state[table].push(blank);
   renderTable(table);
   persistLocal(table);
-  if(table==='release_calendar') renderGTM();
+  if(table==='release_calendar'){
+    renderGTM();
+    renderTable('pre_release');
+  }
   renderDashboard();
   if(ONLINE_MODE){
     const {error} = await supa.from(table).insert(blank);
@@ -1212,7 +1245,11 @@ async function deleteRow(table, id){
   renderTable(table);
   persistLocal(table);
   renderDashboard();
-  if(table==='release_calendar'){ openGtmCards.delete(id); renderGTM(); }
+  if(table==='release_calendar'){
+    openGtmCards.delete(id);
+    renderGTM();
+    renderTable('pre_release');
+  }
   if(ONLINE_MODE){
     const {error} = await supa.from(table).delete().eq('id', id);
     if(error) console.warn('Delete failed', table, error);
@@ -1241,7 +1278,10 @@ function handleRealtime(table, payload){
   persistLocal(table);
   renderTable(table);
   renderDashboard();
-  if(table==='release_calendar') renderGTM();
+  if(table==='release_calendar'){
+    renderGTM();
+    renderTable('pre_release');
+  }
 }
 
 function readinessStatus(value){
