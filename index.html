@@ -106,6 +106,22 @@
   .ro-field{padding:6px 5px;font-size:12.5px;min-height:16px;}
   .ro-field a{color:var(--navy-light);}
 
+  /* --- Frozen (pinned) leading columns in the Release Calendar table --- */
+  #table-release_calendar td[data-frozen-key],
+  #table-release_calendar th[data-frozen-key]{
+    position:sticky;
+  }
+  #table-release_calendar td[data-frozen-key]{ z-index:1; }
+  #table-release_calendar th[data-frozen-key]{ z-index:3; }
+  #table-release_calendar [data-frozen-last]{
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.25);
+  }
+
+  /* --- Muted empty date placeholders (Release Calendar + all tables) --- */
+  td input[type="date"].date-empty{ color:var(--muted); }
+  td input[type="date"].date-empty::-webkit-datetime-edit{ color:var(--muted); opacity:.6; }
+  .ro-field.date-empty{ color:var(--muted); }
+
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;}
   .kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center;}
   .kpi .lbl{font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
@@ -221,7 +237,7 @@
     <!-- RELEASE CALENDAR -->
     <section class="panel active" id="panel-calendar">
       <div class="panel-head">
-        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort. Drag column edges to resize; drag the ⠿ handle to reorder rows.</p></div>
+        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort. Drag column edges to resize; drag the ⠿ handle to reorder rows. Quarter, Game Name, and Stage stay pinned while you scroll right.</p></div>
         <div class="toolbar">
           <input class="search" id="calendarSearchInput" placeholder="Search games, owners, partners…" oninput="calendarFilters.text=this.value; renderTable('release_calendar');">
           <button class="btn secondary" onclick="resetCalendarColumnWidths()">Reset Column Widths</button>
@@ -750,6 +766,37 @@ function renderAll(){
 
 const CALENDAR_SORTABLE_KEYS = ['quarter','game_name','stage','product_type','planned_production_date','toto_live_date','albatros_live_date','pre_release_window','planned_global_launch'];
 
+/* Columns pinned to the left edge of the Release Calendar table while the
+   rest of the table scrolls horizontally underneath. Must be a contiguous
+   run starting from the first data column (Quarter, then Game Name, then
+   Stage) so the sticky "left" offsets stack correctly. */
+const CALENDAR_FROZEN_KEYS = ['quarter','game_name','stage'];
+
+/* Computes the pixel "left" offset each frozen column/cell needs so they
+   stack next to each other (and after the drag-handle column, when present)
+   regardless of the user's current column widths. Recomputed on every
+   render and on every column-resize tick so widths always stay in sync. */
+function frozenLeftOffsets(cfg){
+  const offsets = { __drag: 0 };
+  let cursor = EDIT_MODE ? 26 : 0;
+  cfg.columns.forEach(col=>{
+    if(CALENDAR_FROZEN_KEYS.includes(col.key)){
+      offsets[col.key] = cursor;
+      cursor += colWidthFor(col);
+    }
+  });
+  return offsets;
+}
+
+function applyFrozenOffsets(){
+  const cfg = TABLES.release_calendar;
+  const offsets = frozenLeftOffsets(cfg);
+  document.querySelectorAll('#table-release_calendar [data-frozen-key]').forEach(el=>{
+    const left = offsets[el.dataset.frozenKey];
+    if(left !== undefined) el.style.left = left + 'px';
+  });
+}
+
 function renderTable(table, filterOverride){
   if(table === 'release_calendar'){
     if(typeof filterOverride === 'string') calendarFilters.text = filterOverride;
@@ -846,6 +893,7 @@ function onColResizeMove(e){
   const colEl = document.querySelector(`#colgroup-release_calendar col[data-key="${colResizeState.key}"]`);
   if(colEl) colEl.style.width = newWidth + 'px';
   calendarColWidths[colResizeState.key] = newWidth;
+  applyFrozenOffsets();
 }
 function onColResizeEnd(){
   if(!colResizeState) return;
@@ -855,6 +903,7 @@ function onColResizeEnd(){
   document.removeEventListener('mouseup', onColResizeEnd);
   colResizeState = null;
   saveCalendarColWidths();
+  applyFrozenOffsets();
 }
 
 function calendarDragEnabled(){
@@ -903,14 +952,18 @@ function renderCalendarTable(){
 
   buildCalendarColgroup(cfg);
 
-  const leadTh = EDIT_MODE ? '<th style="width:26px"></th>' : '';
+  const leadTh = EDIT_MODE ? '<th style="width:26px" data-frozen-key="__drag"></th>' : '';
   const trailTh = EDIT_MODE ? '<th style="width:40px"></th>' : '';
 
   headRow.innerHTML = leadTh + cfg.columns.map(c=>{
     const sortable = CALENDAR_SORTABLE_KEYS.includes(c.key);
     let arrow = '';
     if(sortable && calendarSort.key===c.key) arrow = `<span class="sort-arrow">${calendarSort.dir==='asc'?'▲':'▼'}</span>`;
-    return `<th class="${sortable?'sortable':''}" data-key="${c.key}" style="border-right:1px solid rgba(255,255,255,.25)">${c.label}${arrow}<span class="col-resize-handle" data-key="${c.key}"></span></th>`;
+    const isFrozen = CALENDAR_FROZEN_KEYS.includes(c.key);
+    const isLastFrozen = isFrozen && CALENDAR_FROZEN_KEYS[CALENDAR_FROZEN_KEYS.length-1]===c.key;
+    const frozenAttr = isFrozen ? ` data-frozen-key="${c.key}"` : '';
+    const lastAttr = isLastFrozen ? ' data-frozen-last' : '';
+    return `<th class="${sortable?'sortable':''}" data-key="${c.key}"${frozenAttr}${lastAttr} style="border-right:1px solid rgba(255,255,255,.25)">${c.label}${arrow}<span class="col-resize-handle" data-key="${c.key}"></span></th>`;
   }).join('') + trailTh;
 
   headRow.querySelectorAll('th.sortable').forEach(th=>{
@@ -957,6 +1010,8 @@ function renderCalendarTable(){
   rows.forEach(row=>{
     body.appendChild(renderCalendarRow(cfg, row, dragEnabled));
   });
+
+  applyFrozenOffsets();
 }
 
 function renderCalendarRow(cfg, row, dragEnabled){
@@ -967,6 +1022,8 @@ function renderCalendarRow(cfg, row, dragEnabled){
     const dragTd = document.createElement('td');
     dragTd.className = 'rowdrag';
     dragTd.textContent = '⠿';
+    dragTd.dataset.frozenKey = '__drag';
+    dragTd.style.backgroundColor = '#FAFBFC';
     tr.appendChild(dragTd);
   }
 
@@ -975,6 +1032,12 @@ function renderCalendarRow(cfg, row, dragEnabled){
     if(col.type==='number') td.classList.add('col-num');
     td.style.backgroundColor = (i % 2 === 0) ? 'var(--col-band-light)' : 'var(--col-band-dark)';
     td.style.borderRight = '1px solid var(--col-sep)';
+    if(CALENDAR_FROZEN_KEYS.includes(col.key)){
+      td.dataset.frozenKey = col.key;
+      if(CALENDAR_FROZEN_KEYS[CALENDAR_FROZEN_KEYS.length-1]===col.key){
+        td.dataset.frozenLast = '';
+      }
+    }
     td.appendChild(makeField('release_calendar', row, col, 'table'));
     tr.appendChild(td);
   });
@@ -1125,7 +1188,12 @@ function makeField(table, row, col, sourceView){
     el.type = 'date';
     el.value = row[col.key] ?? '';
     if(col.bold) el.style.fontWeight = '700';
-    el.addEventListener('change', ()=>{ row[col.key]=el.value||null; commit(table,row,sourceView); });
+    if(!el.value) el.classList.add('date-empty');
+    el.addEventListener('change', ()=>{
+      row[col.key]=el.value||null;
+      el.classList.toggle('date-empty', !el.value);
+      commit(table,row,sourceView);
+    });
   } else if(col.type==='number'){
     el = document.createElement('input');
     el.type = 'number';
@@ -1157,7 +1225,8 @@ function makeReadOnlyField(row, col){
     }
   } else if(col.type==='date'){
     div.textContent = val ? formatDateNice(val) : '—';
-    if(col.bold) div.style.fontWeight = '700';
+    if(col.bold && val) div.style.fontWeight = '700';
+    if(!val) div.classList.add('date-empty');
   } else {
     const text = (val===null||val===undefined||val==='') ? '—' : String(val);
     if(/^https?:\/\//i.test(text)){
