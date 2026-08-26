@@ -181,6 +181,30 @@
   .gtm-summary .item .n{font-size:24px;font-weight:800;color:var(--navy);}
   .gtm-summary .item .l{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;}
 
+  /* --- Release Schedule board (monthly sticky-note style cards) --- */
+  #scheduleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;}
+  .month-card{background:#EAF5E4;border:1px solid #CFE7C4;border-radius:14px;padding:20px;}
+  .month-card h3{margin:0 0 16px;text-align:center;text-decoration:underline;letter-spacing:.5px;color:#2F5233;font-size:14px;text-transform:uppercase;font-weight:700;}
+  .ticket{margin-bottom:18px;}
+  .ticket:last-child{margin-bottom:0;}
+  .ticket-title{display:flex;align-items:center;gap:6px;font-weight:700;color:#1F3864;margin-bottom:4px;font-size:13.5px;}
+  .ticket-bullets{margin:0;padding-left:18px;font-size:12.5px;color:#2b2b2b;}
+  .ticket-bullets li{margin-bottom:2px;}
+  .ticket-empty{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 16px;}
+  .add-ticket-btn{width:100%;margin-top:6px;background:none;border:1px dashed #9dc78d;color:#2F5233;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
+  .add-ticket-btn:hover{background:#DDEFD2;}
+  .ticket-edit{background:#fff;border:1px solid #CFE7C4;border-radius:8px;padding:10px;}
+  .ticket-edit input, .ticket-edit textarea, .ticket-edit select{
+    width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 7px;font-size:12.5px;margin-bottom:6px;background:#fff;font-family:inherit;color:var(--text);
+  }
+  .ticket-edit input:focus, .ticket-edit textarea:focus, .ticket-edit select:focus{border-color:var(--navy-light);outline:none;}
+  .ticket-edit textarea{min-height:76px;resize:vertical;}
+  .ticket-edit .ticket-name-row{display:flex;gap:6px;}
+  .ticket-edit .ticket-name-row input{flex:2;}
+  .ticket-edit .ticket-name-row select{flex:1;}
+  .ticket-actions{display:flex;justify-content:flex-end;}
+  .ticket-actions .btn.danger{padding:4px 10px;font-size:11.5px;}
+
   .settings-box{max-width:480px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;}
   .settings-box label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;}
   .settings-box input{width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px;font-size:13px;}
@@ -227,7 +251,7 @@
     <button data-tab="gtm">Go-to-Market</button>
     <button data-tab="dashboard">Dashboard</button>
     <button data-tab="prerelease">Pre-Release Tracker</button>
-    <button data-tab="marketing">Marketing Materials</button>
+    <button data-tab="schedule">Release Schedule</button>
     <button data-tab="partners">Top Partners</button>
     <button data-tab="snapshot">Performance Snapshot</button>
     <button data-tab="settings" class="editor-only">Settings</button>
@@ -313,16 +337,16 @@
       <div class="table-wrap"><table><thead><tr id="head-pre_release"></tr></thead><tbody id="body-pre_release"></tbody></table></div>
     </section>
 
-    <!-- MARKETING -->
-    <section class="panel" id="panel-marketing">
+    <!-- RELEASE SCHEDULE -->
+    <section class="panel" id="panel-schedule">
       <div class="panel-head">
-        <div><h2>Marketing Materials</h2><p>Go-to-market asset readiness by game</p></div>
-        <div class="toolbar">
-          <input class="search" placeholder="Search…" oninput="renderTable('marketing_materials', this.value)">
-          <button class="btn editor-only" onclick="addRow('marketing_materials')">+ Add Game</button>
-        </div>
+        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Each card is a release with its key dates as bullet points.</p></div>
       </div>
-      <div class="table-wrap"><table><thead><tr id="head-marketing_materials"></tr></thead><tbody id="body-marketing_materials"></tbody></table></div>
+      <div class="panel-head" style="margin-bottom:10px;">
+        <div class="chiprow" id="scheduleQuarterChips"></div>
+      </div>
+      <div id="scheduleGrid"></div>
+      <div id="scheduleEmpty" class="empty-note hidden">No releases scheduled for this period.</div>
     </section>
 
     <!-- TOP PARTNERS -->
@@ -510,7 +534,7 @@ async function saveNewPins(){
   document.getElementById('newEditPin').value = '';
 }
 
-const SEED = {"release_calendar": [], "pre_release": [], "marketing_materials": [], "top_partners": [], "performance_snapshot": []};
+const SEED = {"release_calendar": [], "pre_release": [], "schedule_tickets": [], "top_partners": [], "performance_snapshot": []};
 
 const LISTS = {
   quarter: ['Q1','Q2','Q3','Q4'],
@@ -575,18 +599,15 @@ const TABLES = {
       {key:'notes', label:'Notes', type:'textarea', w:220}
     ]
   },
-  marketing_materials: {
-    label:'Marketing Materials',
+  /* Rendered by the custom Release Schedule board (renderSchedule), not by
+     the generic table renderer — this config only exists so load/save/sync
+     and the generic deleteRow() helper work the same way as other tables. */
+  schedule_tickets: {
+    label:'Release Schedule',
     columns:[
-      {key:'game', label:'Game', type:'text', w:170},
-      {key:'website', label:'Website', type:'bool', w:80},
-      {key:'ca', label:'CA', type:'bool', w:70},
-      {key:'rules', label:'Rules', type:'text', w:90},
-      {key:'assets_folder', label:'Assets Folder', type:'text', w:260},
-      {key:'demo_link', label:'Demo Link', type:'text', w:200},
-      {key:'client_area', label:'Client Area', type:'text', w:150},
-      {key:'teaser', label:'Teaser', type:'text', w:200},
-      {key:'presentation', label:'Presentation', type:'text', w:200}
+      {key:'month', label:'Month', type:'text', w:120},
+      {key:'game_name', label:'Game', type:'text', w:170},
+      {key:'notes', label:'Details', type:'textarea', w:260}
     ]
   },
   top_partners: {
@@ -630,6 +651,10 @@ const editingCells = new Set();
 const openGtmCards = new Set();
 let gtmFilter = { quarter:'All', pendingOnly:false, search:'' };
 let calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
+let scheduleFilter = { quarter:'All' };
+
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_QUARTERS = { January:'Q1', February:'Q1', March:'Q1', April:'Q2', May:'Q2', June:'Q2', July:'Q3', August:'Q3', September:'Q3', October:'Q4', November:'Q4', December:'Q4' };
 let calendarSort = { key:null, dir:'asc' };
 let draggedCalendarRowId = null;
 let calendarColWidths = {};
@@ -637,6 +662,7 @@ let calendarColWidths = {};
 async function boot(){
   try{ setupTabs(); } catch(e){ reportError('Failed to set up navigation: ' + (e.message||e)); }
   try{ buildGtmQuarterChips(); } catch(e){ reportError('Failed to set up filters: ' + (e.message||e)); }
+  try{ buildScheduleQuarterChips(); } catch(e){ reportError('Failed to set up schedule filters: ' + (e.message||e)); }
   try{ populateCalendarFilterOptions(); } catch(e){ reportError('Failed to set up calendar filters: ' + (e.message||e)); }
   try{ loadCalendarColWidths(); } catch(e){ console.warn('Could not load saved column widths', e); }
   document.getElementById('settingsScopeNote').textContent = 'Changing a PIN here updates it for everyone who opens this tracker.';
@@ -801,6 +827,10 @@ function renderTable(table, filterOverride){
   if(table === 'release_calendar'){
     if(typeof filterOverride === 'string') calendarFilters.text = filterOverride;
     renderCalendarTable();
+    return;
+  }
+  if(table === 'schedule_tickets'){
+    renderSchedule();
     return;
   }
   const filter = (filterOverride||'').toLowerCase();
@@ -1276,6 +1306,9 @@ async function commit(table, row, sourceView){
        Game dropdown so it stays in sync with Release Calendar. */
     renderTable('pre_release');
   }
+  if(table==='schedule_tickets'){
+    renderSchedule();
+  }
   if(!ONLINE_MODE) return;
   const {error} = await supa.from(table).update(row).eq('id', row.id);
   if(error) console.warn('Update failed', table, error);
@@ -1524,6 +1557,153 @@ function renderGtmCard(row){
   }
 
   return card;
+}
+
+function buildScheduleQuarterChips(){
+  const wrap = document.getElementById('scheduleQuarterChips');
+  if(!wrap) return;
+  const opts = ['All', ...LISTS.quarter];
+  wrap.innerHTML = opts.map(q=>`<button class="chip${q==='All'?' active':''}" data-q="${q}">${q}</button>`).join('');
+  wrap.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      wrap.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      scheduleFilter.quarter = chip.dataset.q;
+      renderSchedule();
+    });
+  });
+}
+
+function renderSchedule(){
+  const grid = document.getElementById('scheduleGrid');
+  const emptyNote = document.getElementById('scheduleEmpty');
+  if(!grid) return;
+  grid.innerHTML = '';
+
+  const tickets = state.schedule_tickets || [];
+  const monthsToShow = MONTHS.filter(m => scheduleFilter.quarter==='All' || MONTH_QUARTERS[m]===scheduleFilter.quarter);
+
+  monthsToShow.forEach(month=>{
+    const monthTickets = tickets.filter(t=>t.month===month);
+    grid.appendChild(renderScheduleMonthCard(month, monthTickets));
+  });
+
+  if(emptyNote) emptyNote.classList.add('hidden');
+}
+
+function renderScheduleMonthCard(month, tickets){
+  const card = document.createElement('div');
+  card.className = 'month-card';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = month;
+  card.appendChild(h3);
+
+  if(!tickets.length){
+    const empty = document.createElement('div');
+    empty.className = 'ticket-empty';
+    empty.textContent = EDIT_MODE ? 'No tickets yet.' : 'No releases scheduled.';
+    card.appendChild(empty);
+  }
+
+  tickets.forEach(t=>card.appendChild(renderScheduleTicket(t)));
+
+  if(EDIT_MODE){
+    const addBtn = document.createElement('button');
+    addBtn.className = 'add-ticket-btn';
+    addBtn.textContent = '+ Add Ticket';
+    addBtn.onclick = ()=>addScheduleTicket(month);
+    card.appendChild(addBtn);
+  }
+
+  return card;
+}
+
+function renderScheduleTicket(t){
+  const wrap = document.createElement('div');
+  wrap.className = 'ticket';
+  wrap.dataset.id = t.id;
+
+  if(!EDIT_MODE){
+    const title = document.createElement('div');
+    title.className = 'ticket-title';
+    title.innerHTML = `🎮 <span>${escapeHtml(t.game_name || 'Untitled')}</span>`;
+    wrap.appendChild(title);
+
+    const lines = (t.notes||'').split('\n').map(l=>l.trim()).filter(Boolean);
+    if(lines.length){
+      const ul = document.createElement('ul');
+      ul.className = 'ticket-bullets';
+      lines.forEach(line=>{
+        const li = document.createElement('li');
+        li.textContent = line;
+        ul.appendChild(li);
+      });
+      wrap.appendChild(ul);
+    }
+    return wrap;
+  }
+
+  wrap.classList.add('ticket-edit');
+
+  const nameRow = document.createElement('div');
+  nameRow.className = 'ticket-name-row';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Game name';
+  nameInput.value = t.game_name || '';
+  nameInput.addEventListener('blur', ()=>{
+    t.game_name = nameInput.value || null;
+    commit('schedule_tickets', t, 'schedule');
+  });
+  nameRow.appendChild(nameInput);
+
+  const monthSelect = document.createElement('select');
+  MONTHS.forEach(m=>{
+    const o = document.createElement('option'); o.value=m; o.textContent=m;
+    if(m===t.month) o.selected = true;
+    monthSelect.appendChild(o);
+  });
+  monthSelect.addEventListener('change', ()=>{
+    t.month = monthSelect.value;
+    commit('schedule_tickets', t, 'schedule');
+  });
+  nameRow.appendChild(monthSelect);
+
+  wrap.appendChild(nameRow);
+
+  const notesArea = document.createElement('textarea');
+  notesArea.placeholder = 'One detail per line, e.g.\nToto Live: 17 August\nAlbatros Live: 20 August\nPlanned Global Launch: 3 September';
+  notesArea.value = t.notes || '';
+  notesArea.addEventListener('blur', ()=>{
+    t.notes = notesArea.value || null;
+    commit('schedule_tickets', t, 'schedule');
+  });
+  wrap.appendChild(notesArea);
+
+  const actions = document.createElement('div');
+  actions.className = 'ticket-actions';
+  const delBtn = document.createElement('button');
+  delBtn.className = 'btn danger';
+  delBtn.textContent = '✕ Delete';
+  delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
+  actions.appendChild(delBtn);
+  wrap.appendChild(actions);
+
+  return wrap;
+}
+
+async function addScheduleTicket(month){
+  const blank = { id: crypto.randomUUID(), month, game_name: '', notes: '' };
+  state.schedule_tickets.push(blank);
+  persistLocal('schedule_tickets');
+  renderSchedule();
+  if(ONLINE_MODE){
+    const {error} = await supa.from('schedule_tickets').insert(blank);
+    if(error) console.warn('Insert failed', 'schedule_tickets', error);
+  }
+  return blank;
 }
 
 let charts = {};
