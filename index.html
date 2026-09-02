@@ -182,7 +182,7 @@
   .gtm-summary .item .l{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;}
 
   /* --- Release Schedule board (monthly sticky-note style cards) --- */
-  #scheduleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;}
+  #scheduleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;align-items:start;}
   .month-card{background:#EAF5E4;border:1px solid #CFE7C4;border-radius:14px;padding:20px;}
   .month-card h3{margin:0 0 16px;text-align:center;text-decoration:underline;letter-spacing:.5px;color:#2F5233;font-size:14px;text-transform:uppercase;font-weight:700;}
   .ticket{margin-bottom:18px;}
@@ -193,17 +193,67 @@
   .ticket-empty{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 16px;}
   .add-ticket-btn{width:100%;margin-top:6px;background:none;border:1px dashed #9dc78d;color:#2F5233;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
   .add-ticket-btn:hover{background:#DDEFD2;}
-  .ticket-edit{background:#fff;border:1px solid #CFE7C4;border-radius:8px;padding:10px;}
+
+  /* Sticky-note style ticket: resizable box (drag the bottom-right corner
+     to make it larger or smaller). Size is remembered per-ticket. */
+  .ticket-note{
+    position:relative;
+    background:#fff;border:1px solid #CFE7C4;border-radius:8px;
+    padding:10px;
+    resize:both; overflow:auto;
+    min-width:200px; min-height:110px;
+    max-width:100%;
+  }
+  .ticket-edit.ticket-note{ min-height:190px; }
+
   .ticket-edit input, .ticket-edit textarea, .ticket-edit select{
     width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 7px;font-size:12.5px;margin-bottom:6px;background:#fff;font-family:inherit;color:var(--text);
   }
   .ticket-edit input:focus, .ticket-edit textarea:focus, .ticket-edit select:focus{border-color:var(--navy-light);outline:none;}
-  .ticket-edit textarea{min-height:76px;resize:vertical;}
   .ticket-edit .ticket-name-row{display:flex;gap:6px;}
   .ticket-edit .ticket-name-row input{flex:2;}
   .ticket-edit .ticket-name-row select{flex:1;}
-  .ticket-actions{display:flex;justify-content:flex-end;}
+  .ticket-actions{display:flex;justify-content:flex-end;margin-top:6px;}
   .ticket-actions .btn.danger{padding:4px 10px;font-size:11.5px;}
+
+  /* Rich-text formatting toolbar shown above each editable sticky note,
+     styled to match the pink mini-toolbar reference (B / I / U / S /
+     bullet list / image). */
+  .ticket-toolbar{
+    display:flex; align-items:center; gap:2px;
+    background:#FBE7EF; border:1px solid #F3C9DA; border-radius:6px;
+    padding:4px; margin-bottom:6px;
+  }
+  .ticket-toolbar button{
+    width:26px; height:24px; border:none; background:transparent; border-radius:4px;
+    cursor:pointer; font-size:13px; color:#5a3a48; display:flex; align-items:center; justify-content:center;
+    font-family:inherit;
+  }
+  .ticket-toolbar button:hover{ background:#F3C9DA; }
+  .ticket-toolbar button.active{ background:#EBA8C4; }
+  .ticket-toolbar button.b{ font-weight:800; }
+  .ticket-toolbar button.i{ font-style:italic; font-weight:600; }
+  .ticket-toolbar button.u{ text-decoration:underline; font-weight:600; }
+  .ticket-toolbar button.s{ text-decoration:line-through; font-weight:600; }
+  .ticket-toolbar .sep{ width:1px; height:16px; background:#F3C9DA; margin:0 3px; }
+  .ticket-toolbar input[type="file"]{ display:none; }
+
+  /* The contenteditable notes surface itself */
+  .ticket-notes-editable{
+    border:1px solid var(--border); border-radius:6px; background:#fff;
+    padding:7px 8px; font-size:12.5px; line-height:1.45; min-height:70px;
+    outline:none; overflow:auto; flex:1;
+  }
+  .ticket-notes-editable:focus{ border-color:var(--navy-light); }
+  .ticket-notes-editable ul{ margin:4px 0; padding-left:18px; }
+  .ticket-notes-editable img{ max-width:100%; border-radius:4px; margin-top:4px; }
+  .ticket-notes-editable:empty:before{ content: attr(data-placeholder); color:var(--muted); }
+
+  /* Read-only sticky note body (view mode) */
+  .ticket-view-body{ font-size:12.5px; color:#2b2b2b; overflow:auto; }
+  .ticket-view-body ul{ margin:4px 0 0; padding-left:18px; }
+  .ticket-view-body img{ max-width:100%; border-radius:4px; margin-top:4px; }
+  .ticket-resize-hint{ position:absolute; right:3px; bottom:1px; font-size:9px; color:#ccc; pointer-events:none; }
 
   .settings-box{max-width:480px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;}
   .settings-box label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;}
@@ -340,7 +390,7 @@
     <!-- RELEASE SCHEDULE -->
     <section class="panel" id="panel-schedule">
       <div class="panel-head">
-        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Each card is a release with its key dates as bullet points.</p></div>
+        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Format each note with the toolbar (bold, italic, underline, strikethrough, bullet list, image) and drag a note's bottom-right corner to resize it.</p></div>
       </div>
       <div class="panel-head" style="margin-bottom:10px;">
         <div class="chiprow" id="scheduleQuarterChips"></div>
@@ -601,13 +651,18 @@ const TABLES = {
   },
   /* Rendered by the custom Release Schedule board (renderSchedule), not by
      the generic table renderer — this config only exists so load/save/sync
-     and the generic deleteRow() helper work the same way as other tables. */
+     and the generic deleteRow() helper work the same way as other tables.
+     notes_html/width/height are read directly off each ticket row by the
+     custom sticky-note renderer below. */
   schedule_tickets: {
     label:'Release Schedule',
     columns:[
       {key:'month', label:'Month', type:'text', w:120},
       {key:'game_name', label:'Game', type:'text', w:170},
-      {key:'notes', label:'Details', type:'textarea', w:260}
+      {key:'notes', label:'Details', type:'textarea', w:260},
+      {key:'notes_html', label:'Details (rich text)', type:'textarea', w:260},
+      {key:'width', label:'Width', type:'text', w:80},
+      {key:'height', label:'Height', type:'text', w:80}
     ]
   },
   top_partners: {
@@ -1307,7 +1362,10 @@ async function commit(table, row, sourceView){
     renderTable('pre_release');
   }
   if(table==='schedule_tickets'){
-    renderSchedule();
+    /* Ticket edits (name/month/notes) are saved directly via saveTicketField
+       below without a full re-render, so we don't call renderSchedule()
+       here — doing so would rebuild the DOM mid-edit and drop focus/cursor
+       position inside the rich-text note or destroy an in-progress resize. */
   }
   if(!ONLINE_MODE) return;
   const {error} = await supa.from(table).update(row).eq('id', row.id);
@@ -1619,32 +1677,81 @@ function renderScheduleMonthCard(month, tickets){
   return card;
 }
 
+/* ---------- Sticky-note ticket rendering (Release Schedule tab) ----------
+   Each ticket is a resizable "sticky note" (drag its bottom-right corner
+   to make it larger/smaller — size is remembered per ticket). In Editor
+   mode, the note's details field is a rich-text (contenteditable) area
+   with a small formatting toolbar: Bold, Italic, Underline, Strikethrough,
+   Bullet list, and Image insert — matching the reference toolbar look.
+   Rich content is stored as HTML in ticket.notes_html. Older tickets that
+   only have a plain-text `notes` field (one line per bullet) still render
+   fine in view mode and get migrated to notes_html the first time they're
+   edited. */
+
+function saveTicketSize(ticket, el){
+  ticket.width = el.style.width || ticket.width || null;
+  ticket.height = el.style.height || ticket.height || null;
+  persistLocal('schedule_tickets');
+  if(ONLINE_MODE){
+    supa.from('schedule_tickets').update({width: ticket.width, height: ticket.height}).eq('id', ticket.id)
+      .then(({error})=>{ if(error) console.warn('Could not sync ticket size', error); });
+  }
+}
+
+/* Attaches a ResizeObserver so manual corner-drag resizing (native CSS
+   `resize`) is captured and persisted without forcing a full re-render
+   (which would interrupt an in-progress drag or wipe focus). */
+function attachTicketResizeObserver(el, ticket){
+  if(!window.ResizeObserver) return;
+  let debounceTimer = null;
+  const ro = new ResizeObserver(entries=>{
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(()=>{
+      const rect = el.getBoundingClientRect();
+      el.style.width = Math.round(rect.width) + 'px';
+      el.style.height = Math.round(rect.height) + 'px';
+      saveTicketSize(ticket, el);
+    }, 300);
+  });
+  ro.observe(el);
+}
+
+function migrateTicketNotesToHtml(t){
+  if(t.notes_html) return t.notes_html;
+  const lines = (t.notes||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return '';
+  return '<ul>' + lines.map(l=>`<li>${escapeHtml(l)}</li>`).join('') + '</ul>';
+}
+
 function renderScheduleTicket(t){
   const wrap = document.createElement('div');
   wrap.className = 'ticket';
   wrap.dataset.id = t.id;
 
+  const note = document.createElement('div');
+  note.className = 'ticket-note';
+  if(t.width) note.style.width = t.width;
+  if(t.height) note.style.height = t.height;
+  wrap.appendChild(note);
+
   if(!EDIT_MODE){
+    note.classList.add('ticket-view-note');
     const title = document.createElement('div');
     title.className = 'ticket-title';
     title.innerHTML = `🎮 <span>${escapeHtml(t.game_name || 'Untitled')}</span>`;
-    wrap.appendChild(title);
+    note.appendChild(title);
 
-    const lines = (t.notes||'').split('\n').map(l=>l.trim()).filter(Boolean);
-    if(lines.length){
-      const ul = document.createElement('ul');
-      ul.className = 'ticket-bullets';
-      lines.forEach(line=>{
-        const li = document.createElement('li');
-        li.textContent = line;
-        ul.appendChild(li);
-      });
-      wrap.appendChild(ul);
-    }
+    const body = document.createElement('div');
+    body.className = 'ticket-view-body';
+    const html = migrateTicketNotesToHtml(t);
+    body.innerHTML = html || '<span style="color:var(--muted)">No details yet.</span>';
+    note.appendChild(body);
+
+    attachTicketResizeObserver(note, t);
     return wrap;
   }
 
-  wrap.classList.add('ticket-edit');
+  note.classList.add('ticket-edit');
 
   const nameRow = document.createElement('div');
   nameRow.className = 'ticket-name-row';
@@ -1668,19 +1775,78 @@ function renderScheduleTicket(t){
   monthSelect.addEventListener('change', ()=>{
     t.month = monthSelect.value;
     commit('schedule_tickets', t, 'schedule');
+    renderSchedule();
   });
   nameRow.appendChild(monthSelect);
 
-  wrap.appendChild(nameRow);
+  note.appendChild(nameRow);
 
-  const notesArea = document.createElement('textarea');
-  notesArea.placeholder = 'One detail per line, e.g.\nToto Live: 17 August\nAlbatros Live: 20 August\nPlanned Global Launch: 3 September';
-  notesArea.value = t.notes || '';
-  notesArea.addEventListener('blur', ()=>{
-    t.notes = notesArea.value || null;
+  /* --- Rich-text formatting toolbar --- */
+  const toolbar = document.createElement('div');
+  toolbar.className = 'ticket-toolbar';
+
+  const notesEl = document.createElement('div');
+  notesEl.className = 'ticket-notes-editable';
+  notesEl.contentEditable = 'true';
+  notesEl.setAttribute('data-placeholder', 'One detail per line, e.g.\nToto Live: 17 August\nAlbatros Live: 20 August\nPlanned Global Launch: 3 September');
+  notesEl.innerHTML = migrateTicketNotesToHtml(t);
+
+  function runCmd(cmd, value){
+    notesEl.focus();
+    document.execCommand(cmd, false, value || null);
+  }
+
+  function toolBtn(cls, label, title, onClick){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = cls;
+    b.textContent = label;
+    b.title = title;
+    b.onmousedown = (e)=>e.preventDefault(); // keep focus/selection in notesEl
+    b.onclick = onClick;
+    return b;
+  }
+
+  toolbar.appendChild(toolBtn('b', 'B', 'Bold', ()=>runCmd('bold')));
+  toolbar.appendChild(toolBtn('i', 'I', 'Italic', ()=>runCmd('italic')));
+  toolbar.appendChild(toolBtn('u', 'U', 'Underline', ()=>runCmd('underline')));
+  toolbar.appendChild(toolBtn('s', 'S', 'Strikethrough', ()=>runCmd('strikeThrough')));
+
+  const sep1 = document.createElement('div'); sep1.className = 'sep';
+  toolbar.appendChild(sep1);
+
+  toolbar.appendChild(toolBtn('list', '≡', 'Bullet list', ()=>runCmd('insertUnorderedList')));
+
+  const sep2 = document.createElement('div'); sep2.className = 'sep';
+  toolbar.appendChild(sep2);
+
+  const imgInput = document.createElement('input');
+  imgInput.type = 'file';
+  imgInput.accept = 'image/*';
+  imgInput.addEventListener('change', ()=>{
+    const file = imgInput.files && imgInput.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      runCmd('insertImage', reader.result);
+      t.notes_html = notesEl.innerHTML;
+      commit('schedule_tickets', t, 'schedule');
+    };
+    reader.readAsDataURL(file);
+    imgInput.value = '';
+  });
+  const imgBtn = toolBtn('img', '🖼', 'Insert image', ()=>imgInput.click());
+  toolbar.appendChild(imgBtn);
+  toolbar.appendChild(imgInput);
+
+  note.appendChild(toolbar);
+
+  notesEl.addEventListener('blur', ()=>{
+    t.notes_html = notesEl.innerHTML;
+    t.notes = notesEl.innerText; // keep plain-text copy in sync for search/back-compat
     commit('schedule_tickets', t, 'schedule');
   });
-  wrap.appendChild(notesArea);
+  note.appendChild(notesEl);
 
   const actions = document.createElement('div');
   actions.className = 'ticket-actions';
@@ -1689,13 +1855,15 @@ function renderScheduleTicket(t){
   delBtn.textContent = '✕ Delete';
   delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
   actions.appendChild(delBtn);
-  wrap.appendChild(actions);
+  note.appendChild(actions);
+
+  attachTicketResizeObserver(note, t);
 
   return wrap;
 }
 
 async function addScheduleTicket(month){
-  const blank = { id: crypto.randomUUID(), month, game_name: '', notes: '' };
+  const blank = { id: crypto.randomUUID(), month, game_name: '', notes: '', notes_html: '', width: null, height: null };
   state.schedule_tickets.push(blank);
   persistLocal('schedule_tickets');
   renderSchedule();
