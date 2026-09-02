@@ -187,73 +187,89 @@
   .month-card h3{margin:0 0 16px;text-align:center;text-decoration:underline;letter-spacing:.5px;color:#2F5233;font-size:14px;text-transform:uppercase;font-weight:700;}
   .ticket{margin-bottom:18px;}
   .ticket:last-child{margin-bottom:0;}
-  .ticket-title{display:flex;align-items:center;gap:6px;font-weight:700;color:#1F3864;margin-bottom:4px;font-size:13.5px;}
-  .ticket-bullets{margin:0;padding-left:18px;font-size:12.5px;color:#2b2b2b;}
-  .ticket-bullets li{margin-bottom:2px;}
   .ticket-empty{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 16px;}
   .add-ticket-btn{width:100%;margin-top:6px;background:none;border:1px dashed #9dc78d;color:#2F5233;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
   .add-ticket-btn:hover{background:#DDEFD2;}
 
-  /* Sticky-note style ticket: resizable box (drag the bottom-right corner
-     to make it larger or smaller). Size is remembered per-ticket. */
-  .ticket-note{
+  /* Sticky-note style ticket — one solid-colored surface, like the OS
+     Sticky Notes app: a title bar up top, plain text typed straight onto
+     the colored background (no nested white boxes), and a slim formatting
+     toolbar docked at the bottom. Drag the bottom-right corner to resize;
+     size is remembered per-ticket. */
+  .sticky-note{
     position:relative;
-    background:#fff;border:1px solid #CFE7C4;border-radius:8px;
-    padding:10px;
+    display:flex; flex-direction:column;
+    border-radius:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.10);
     resize:both; overflow:auto;
-    min-width:200px; min-height:110px;
+    min-width:210px; min-height:150px;
     max-width:100%;
   }
-  .ticket-edit.ticket-note{ min-height:190px; }
-
-  .ticket-edit input, .ticket-edit textarea, .ticket-edit select{
-    width:100%;border:1px solid var(--border);border-radius:6px;padding:6px 7px;font-size:12.5px;margin-bottom:6px;background:#fff;font-family:inherit;color:var(--text);
+  .sticky-note-header{
+    display:flex; align-items:center; gap:6px;
+    padding:8px 10px 2px;
+    flex-shrink:0;
   }
-  .ticket-edit input:focus, .ticket-edit textarea:focus, .ticket-edit select:focus{border-color:var(--navy-light);outline:none;}
-  .ticket-edit .ticket-name-row{display:flex;gap:6px;}
-  .ticket-edit .ticket-name-row input{flex:2;}
-  .ticket-edit .ticket-name-row select{flex:1;}
-  .ticket-actions{display:flex;justify-content:flex-end;margin-top:6px;}
-  .ticket-actions .btn.danger{padding:4px 10px;font-size:11.5px;}
-
-  /* Rich-text formatting toolbar shown above each editable sticky note,
-     styled to match the pink mini-toolbar reference (B / I / U / S /
-     bullet list / image). */
-  .ticket-toolbar{
-    display:flex; align-items:center; gap:2px;
-    background:#FBE7EF; border:1px solid #F3C9DA; border-radius:6px;
-    padding:4px; margin-bottom:6px;
+  .sticky-note-header input[type="text"]{
+    flex:1; min-width:0;
+    background:transparent; border:none; outline:none;
+    font-weight:700; font-size:13.5px; font-family:inherit;
+    color:inherit; padding:2px 0;
   }
-  .ticket-toolbar button{
-    width:26px; height:24px; border:none; background:transparent; border-radius:4px;
-    cursor:pointer; font-size:13px; color:#5a3a48; display:flex; align-items:center; justify-content:center;
-    font-family:inherit;
+  .sticky-note-header input[type="text"]::placeholder{ color:rgba(0,0,0,.35); }
+  .sticky-note-header select{
+    background:transparent; border:none; outline:none; cursor:pointer;
+    font-size:11px; font-weight:600; color:inherit; opacity:.75; font-family:inherit;
   }
-  .ticket-toolbar button:hover{ background:#F3C9DA; }
-  .ticket-toolbar button.active{ background:#EBA8C4; }
-  .ticket-toolbar button.b{ font-weight:800; }
-  .ticket-toolbar button.i{ font-style:italic; font-weight:600; }
-  .ticket-toolbar button.u{ text-decoration:underline; font-weight:600; }
-  .ticket-toolbar button.s{ text-decoration:line-through; font-weight:600; }
-  .ticket-toolbar .sep{ width:1px; height:16px; background:#F3C9DA; margin:0 3px; }
-  .ticket-toolbar input[type="file"]{ display:none; }
-
-  /* The contenteditable notes surface itself */
-  .ticket-notes-editable{
-    border:1px solid var(--border); border-radius:6px; background:#fff;
-    padding:7px 8px; font-size:12.5px; line-height:1.45; min-height:70px;
-    outline:none; overflow:auto; flex:1;
+  .sticky-note-header .note-del{
+    background:transparent; border:none; cursor:pointer;
+    color:inherit; opacity:.45; font-size:15px; padding:2px 4px; line-height:1;
   }
-  .ticket-notes-editable:focus{ border-color:var(--navy-light); }
-  .ticket-notes-editable ul{ margin:4px 0; padding-left:18px; }
-  .ticket-notes-editable img{ max-width:100%; border-radius:4px; margin-top:4px; }
-  .ticket-notes-editable:empty:before{ content: attr(data-placeholder); color:var(--muted); }
+  .sticky-note-header .note-del:hover{ opacity:.85; }
+  .sticky-note-view-title{
+    font-weight:700; font-size:13.5px; padding:8px 10px 2px; flex-shrink:0;
+  }
 
-  /* Read-only sticky note body (view mode) */
-  .ticket-view-body{ font-size:12.5px; color:#2b2b2b; overflow:auto; }
-  .ticket-view-body ul{ margin:4px 0 0; padding-left:18px; }
-  .ticket-view-body img{ max-width:100%; border-radius:4px; margin-top:4px; }
-  .ticket-resize-hint{ position:absolute; right:3px; bottom:1px; font-size:9px; color:#ccc; pointer-events:none; }
+  /* The typing surface fills the rest of the colored note — fully
+     transparent so the note's own background color shows through. */
+  .sticky-note-body{
+    flex:1; overflow:auto;
+    padding:2px 10px 8px;
+    font-size:12.5px; line-height:1.5; color:inherit;
+    outline:none; background:transparent;
+  }
+  .sticky-note-body ul{ margin:4px 0; padding-left:18px; }
+  .sticky-note-body img{ max-width:100%; border-radius:4px; margin-top:4px; }
+  .sticky-note-body[contenteditable]:empty:before{ content:attr(data-placeholder); color:rgba(0,0,0,.38); }
+
+  /* Bottom-docked formatting toolbar — flat icon buttons over a slightly
+     darker strip of the note's own color, matching the reference sticky
+     note toolbar (B / I / U / S / bullet list / image), no boxed pink bar. */
+  .sticky-note-toolbar{
+    display:flex; align-items:center; gap:1px;
+    padding:5px 7px;
+    border-top:1px solid rgba(0,0,0,.08);
+    background:rgba(255,255,255,.28);
+    flex-shrink:0;
+  }
+  .sticky-note-toolbar button{
+    width:25px; height:23px; border:none; background:transparent; border-radius:4px;
+    cursor:pointer; font-size:12.5px; color:inherit; opacity:.75;
+    display:flex; align-items:center; justify-content:center; font-family:inherit;
+  }
+  .sticky-note-toolbar button:hover{ opacity:1; background:rgba(0,0,0,.08); }
+  .sticky-note-toolbar button.b{ font-weight:800; }
+  .sticky-note-toolbar button.i{ font-style:italic; font-weight:600; }
+  .sticky-note-toolbar button.u{ text-decoration:underline; font-weight:600; }
+  .sticky-note-toolbar button.s{ text-decoration:line-through; font-weight:600; }
+  .sticky-note-toolbar .sep{ width:1px; height:15px; background:rgba(0,0,0,.12); margin:0 3px; }
+  .sticky-note-toolbar input[type="file"]{ display:none; }
+
+  .ticket{margin-bottom:18px;}
+  .ticket:last-child{margin-bottom:0;}
+  .ticket-empty{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 16px;}
+  .add-ticket-btn{width:100%;margin-top:6px;background:none;border:1px dashed #9dc78d;color:#2F5233;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
+  .add-ticket-btn:hover{background:#DDEFD2;}
 
   .settings-box{max-width:480px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;}
   .settings-box label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;}
@@ -710,6 +726,25 @@ let scheduleFilter = { quarter:'All' };
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_QUARTERS = { January:'Q1', February:'Q1', March:'Q1', April:'Q2', May:'Q2', June:'Q2', July:'Q3', August:'Q3', September:'Q3', October:'Q4', November:'Q4', December:'Q4' };
+
+/* Pastel sticky-note colors (background + matching text color), styled
+   after the OS Sticky Notes palette. Each ticket is assigned one
+   deterministically from its id so the color stays stable across
+   reloads/re-renders without needing to persist it separately. */
+const STICKY_COLORS = [
+  {bg:'#FFF3B0', text:'#5c4b00'},   // yellow
+  {bg:'#FAD4E4', text:'#6b2c47'},   // pink
+  {bg:'#CFE8FB', text:'#1c4a66'},   // blue
+  {bg:'#E3D9F7', text:'#4a3572'},   // purple
+  {bg:'#FFDCC2', text:'#7a3d10'},   // orange
+  {bg:'#D6F0DA', text:'#276339'}    // mint
+];
+function stickyColorFor(ticket){
+  let h = 0;
+  const s = String(ticket.id || '');
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
+  return STICKY_COLORS[h % STICKY_COLORS.length];
+}
 let calendarSort = { key:null, dir:'asc' };
 let draggedCalendarRowId = null;
 let calendarColWidths = {};
@@ -1728,33 +1763,34 @@ function renderScheduleTicket(t){
   wrap.className = 'ticket';
   wrap.dataset.id = t.id;
 
+  const color = stickyColorFor(t);
   const note = document.createElement('div');
-  note.className = 'ticket-note';
+  note.className = 'sticky-note';
+  note.style.background = color.bg;
+  note.style.color = color.text;
   if(t.width) note.style.width = t.width;
   if(t.height) note.style.height = t.height;
   wrap.appendChild(note);
 
   if(!EDIT_MODE){
-    note.classList.add('ticket-view-note');
     const title = document.createElement('div');
-    title.className = 'ticket-title';
-    title.innerHTML = `🎮 <span>${escapeHtml(t.game_name || 'Untitled')}</span>`;
+    title.className = 'sticky-note-view-title';
+    title.textContent = t.game_name || 'Untitled';
     note.appendChild(title);
 
     const body = document.createElement('div');
-    body.className = 'ticket-view-body';
+    body.className = 'sticky-note-body';
     const html = migrateTicketNotesToHtml(t);
-    body.innerHTML = html || '<span style="color:var(--muted)">No details yet.</span>';
+    body.innerHTML = html || '<span style="opacity:.55">No details yet.</span>';
     note.appendChild(body);
 
     attachTicketResizeObserver(note, t);
     return wrap;
   }
 
-  note.classList.add('ticket-edit');
-
-  const nameRow = document.createElement('div');
-  nameRow.className = 'ticket-name-row';
+  /* --- Title bar: game name + month, typed directly on the note color --- */
+  const header = document.createElement('div');
+  header.className = 'sticky-note-header';
 
   const nameInput = document.createElement('input');
   nameInput.type = 'text';
@@ -1764,7 +1800,7 @@ function renderScheduleTicket(t){
     t.game_name = nameInput.value || null;
     commit('schedule_tickets', t, 'schedule');
   });
-  nameRow.appendChild(nameInput);
+  header.appendChild(nameInput);
 
   const monthSelect = document.createElement('select');
   MONTHS.forEach(m=>{
@@ -1777,25 +1813,38 @@ function renderScheduleTicket(t){
     commit('schedule_tickets', t, 'schedule');
     renderSchedule();
   });
-  nameRow.appendChild(monthSelect);
+  header.appendChild(monthSelect);
 
-  note.appendChild(nameRow);
+  const delBtn = document.createElement('button');
+  delBtn.className = 'note-del';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Delete this note';
+  delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
+  header.appendChild(delBtn);
 
-  /* --- Rich-text formatting toolbar --- */
-  const toolbar = document.createElement('div');
-  toolbar.className = 'ticket-toolbar';
+  note.appendChild(header);
 
+  /* --- Body: type straight onto the colored note (rich text) --- */
   const notesEl = document.createElement('div');
-  notesEl.className = 'ticket-notes-editable';
+  notesEl.className = 'sticky-note-body';
   notesEl.contentEditable = 'true';
   notesEl.setAttribute('data-placeholder', 'One detail per line, e.g.\nToto Live: 17 August\nAlbatros Live: 20 August\nPlanned Global Launch: 3 September');
   notesEl.innerHTML = migrateTicketNotesToHtml(t);
+  notesEl.addEventListener('blur', ()=>{
+    t.notes_html = notesEl.innerHTML;
+    t.notes = notesEl.innerText; // keep plain-text copy in sync for search/back-compat
+    commit('schedule_tickets', t, 'schedule');
+  });
+  note.appendChild(notesEl);
+
+  /* --- Bottom-docked formatting toolbar --- */
+  const toolbar = document.createElement('div');
+  toolbar.className = 'sticky-note-toolbar';
 
   function runCmd(cmd, value){
     notesEl.focus();
     document.execCommand(cmd, false, value || null);
   }
-
   function toolBtn(cls, label, title, onClick){
     const b = document.createElement('button');
     b.type = 'button';
@@ -1817,9 +1866,6 @@ function renderScheduleTicket(t){
 
   toolbar.appendChild(toolBtn('list', '≡', 'Bullet list', ()=>runCmd('insertUnorderedList')));
 
-  const sep2 = document.createElement('div'); sep2.className = 'sep';
-  toolbar.appendChild(sep2);
-
   const imgInput = document.createElement('input');
   imgInput.type = 'file';
   imgInput.accept = 'image/*';
@@ -1840,22 +1886,6 @@ function renderScheduleTicket(t){
   toolbar.appendChild(imgInput);
 
   note.appendChild(toolbar);
-
-  notesEl.addEventListener('blur', ()=>{
-    t.notes_html = notesEl.innerHTML;
-    t.notes = notesEl.innerText; // keep plain-text copy in sync for search/back-compat
-    commit('schedule_tickets', t, 'schedule');
-  });
-  note.appendChild(notesEl);
-
-  const actions = document.createElement('div');
-  actions.className = 'ticket-actions';
-  const delBtn = document.createElement('button');
-  delBtn.className = 'btn danger';
-  delBtn.textContent = '✕ Delete';
-  delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
-  actions.appendChild(delBtn);
-  note.appendChild(actions);
 
   attachTicketResizeObserver(note, t);
 
