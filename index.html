@@ -226,6 +226,24 @@
     color:inherit; opacity:.45; font-size:15px; padding:2px 4px; line-height:1;
   }
   .sticky-note-header .note-del:hover{ opacity:.85; }
+
+  /* Small color-swatch button in the title bar that opens a popover of
+     pastel color dots to click (like choosing a sticky-note color). */
+  .sticky-note-header .note-color-btn{
+    width:16px; height:16px; border-radius:50%; border:1px solid rgba(0,0,0,.25);
+    cursor:pointer; flex-shrink:0; padding:0;
+  }
+  .sticky-color-popover{
+    position:absolute; top:30px; right:8px; z-index:20;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.18);
+    padding:8px; display:flex; gap:6px;
+  }
+  .sticky-color-popover button{
+    width:22px; height:22px; border-radius:50%; border:2px solid transparent;
+    cursor:pointer; padding:0;
+  }
+  .sticky-color-popover button.selected{ border-color:var(--navy); }
   .sticky-note-view-title{
     font-weight:700; font-size:13.5px; padding:8px 10px 2px; flex-shrink:0;
   }
@@ -728,18 +746,26 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 const MONTH_QUARTERS = { January:'Q1', February:'Q1', March:'Q1', April:'Q2', May:'Q2', June:'Q2', July:'Q3', August:'Q3', September:'Q3', October:'Q4', November:'Q4', December:'Q4' };
 
 /* Pastel sticky-note colors (background + matching text color), styled
-   after the OS Sticky Notes palette. Each ticket is assigned one
-   deterministically from its id so the color stays stable across
-   reloads/re-renders without needing to persist it separately. */
+   after the OS Sticky Notes palette. If a ticket has an explicit `color`
+   key (chosen by the user via the swatch picker) that's used; otherwise
+   one is assigned deterministically from the ticket's id, so untouched
+   tickets keep a stable color across reloads/re-renders. */
 const STICKY_COLORS = [
-  {bg:'#FFF3B0', text:'#5c4b00'},   // yellow
-  {bg:'#FAD4E4', text:'#6b2c47'},   // pink
-  {bg:'#CFE8FB', text:'#1c4a66'},   // blue
-  {bg:'#E3D9F7', text:'#4a3572'},   // purple
-  {bg:'#FFDCC2', text:'#7a3d10'},   // orange
-  {bg:'#D6F0DA', text:'#276339'}    // mint
+  {key:'yellow', bg:'#FFF3B0', text:'#5c4b00'},
+  {key:'pink',   bg:'#FAD4E4', text:'#6b2c47'},
+  {key:'blue',   bg:'#CFE8FB', text:'#1c4a66'},
+  {key:'purple', bg:'#E3D9F7', text:'#4a3572'},
+  {key:'orange', bg:'#FFDCC2', text:'#7a3d10'},
+  {key:'mint',   bg:'#D6F0DA', text:'#276339'}
 ];
+function stickyColorByKey(key){
+  return STICKY_COLORS.find(c=>c.key===key) || null;
+}
 function stickyColorFor(ticket){
+  if(ticket.color){
+    const chosen = stickyColorByKey(ticket.color);
+    if(chosen) return chosen;
+  }
   let h = 0;
   const s = String(ticket.id || '');
   for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
@@ -1814,6 +1840,43 @@ function renderScheduleTicket(t){
     renderSchedule();
   });
   header.appendChild(monthSelect);
+
+  const colorBtn = document.createElement('button');
+  colorBtn.type = 'button';
+  colorBtn.className = 'note-color-btn';
+  colorBtn.title = 'Change note color';
+  colorBtn.style.background = color.bg;
+  colorBtn.onclick = (e)=>{
+    e.stopPropagation();
+    const existing = note.querySelector('.sticky-color-popover');
+    if(existing){ existing.remove(); return; }
+    const popover = document.createElement('div');
+    popover.className = 'sticky-color-popover';
+    STICKY_COLORS.forEach(c=>{
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.style.background = c.bg;
+      dot.title = c.key;
+      if(c.key === (t.color || stickyColorFor(t).key)) dot.classList.add('selected');
+      dot.onclick = (ev)=>{
+        ev.stopPropagation();
+        t.color = c.key;
+        commit('schedule_tickets', t, 'schedule');
+        popover.remove();
+        renderSchedule();
+      };
+      popover.appendChild(dot);
+    });
+    note.appendChild(popover);
+    const closeOnOutsideClick = (ev)=>{
+      if(!popover.contains(ev.target) && ev.target !== colorBtn){
+        popover.remove();
+        document.removeEventListener('click', closeOnOutsideClick);
+      }
+    };
+    setTimeout(()=>document.addEventListener('click', closeOnOutsideClick), 0);
+  };
+  header.appendChild(colorBtn);
 
   const delBtn = document.createElement('button');
   delBtn.className = 'note-del';
