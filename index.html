@@ -429,6 +429,7 @@
           <input class="search" id="prereleaseSearchInput" placeholder="Search…" oninput="prereleaseFilter.text=this.value; renderPrerelease();">
           <button class="btn secondary" onclick="expandAllPrereleaseGroups()">Expand All</button>
           <button class="btn secondary" onclick="collapseAllPrereleaseGroups()">Collapse All</button>
+          <button class="btn editor-only" onclick="promptAddPrereleaseGame()">+ Add Game</button>
           <button class="btn editor-only" onclick="addRow('pre_release')">+ Add Row</button>
         </div>
       </div>
@@ -1417,6 +1418,25 @@ async function addPrereleaseRow(game){
     if(error) console.warn('Insert failed', 'pre_release', error);
   }
   return blank;
+}
+
+/* "+ Add Game" — lets the user type a brand-new game name straight into
+   the Pre-Release Tracker and creates its own group with a first blank
+   row, even if that game hasn't been added to Release Calendar yet
+   (the Game dropdown on that row will show it as "(not in list)" until
+   it is). If a group with that name already exists, just expands it
+   and adds a fresh row there instead of creating a duplicate group. */
+function promptAddPrereleaseGame(){
+  const input = window.prompt('New game name for the Pre-Release Tracker:');
+  if(input === null) return;
+  const name = input.trim();
+  if(!name) return;
+
+  const rows = state.pre_release || [];
+  const existing = rows.find(r => (r.game||'').trim().toLowerCase() === name.toLowerCase());
+  const finalName = existing ? existing.game.trim() : name;
+
+  addPrereleaseRow(finalName);
 }
 
 function makeField(table, row, col, sourceView){
