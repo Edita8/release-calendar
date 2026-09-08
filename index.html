@@ -193,6 +193,17 @@
   .gtm-summary .item .n{font-size:24px;font-weight:800;color:var(--navy);}
   .gtm-summary .item .l{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;}
 
+  /* --- Promo Tools: same grid as games, grouped at the bottom with a
+     divider, and tinted purple so they're instantly distinguishable from
+     real game releases without needing a separate tab. --- */
+  .gtm-promo-divider{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:6px 0 -2px;}
+  .gtm-promo-divider span{font-size:11.5px;font-weight:700;color:var(--purple-fg);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+  .gtm-promo-divider .line{flex:1;height:1px;background:var(--border);}
+  .gtm-card.promo-tool{background:#F7F2FC;border-color:#D9C7EF;}
+  .gtm-card.promo-tool .gtm-card-head h3{color:var(--purple-fg);}
+  .gtm-card.promo-tool .gtm-pct .num{color:var(--purple-fg);}
+  .gtm-card.promo-tool .stepper::before{background:#E4D9F0;}
+
   /* --- Release Schedule board (monthly sticky-note style cards) --- */
   #scheduleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;align-items:start;}
   .month-card{background:#EAF5E4;border:1px solid #CFE7C4;border-radius:14px;padding:20px;}
@@ -379,7 +390,7 @@
       <div class="panel-head">
         <div>
           <h2>Go-to-Market Pipeline</h2>
-          <p>Every game's path to launch: assets → Toto → Albatros → push notifications → global launch</p>
+          <p>Every game's path to launch: Toto → Albatros → global launch → demo link → emails</p>
         </div>
         <div class="toolbar">
           <input class="search" id="gtmSearch" placeholder="Search games…" oninput="gtmFilter.search=this.value; renderGTM();">
@@ -684,7 +695,11 @@ const TABLES = {
       {key:'albatros_live_date', label:'Albatros Live', type:'date', w:140},
       {key:'pre_release_window', label:'Pre-Release Window', type:'date', w:140},
       {key:'planned_global_launch', label:'Global Launch', type:'date', w:140, bold:true},
-      {key:'partner_email', label:'Partner Email', type:'text', w:130},
+      /* Shared with the Go-to-Market pipeline's "Demo Link" and "Emails"
+         steps — editing either one here updates the GTM card, and vice
+         versa, since both tabs read/write the same row fields. */
+      {key:'demo_link', label:'Demo Link', type:'text', w:180},
+      {key:'marketing_email', label:'Email', type:'text', w:180},
       {key:'notes', label:'Notes', type:'textarea', w:260}
     ]
   },
@@ -738,15 +753,15 @@ const TABLES = {
 };
 
 const GTM_EDIT_KEYS = ['quarter','game_name','stage','product_type','product_owner','pm_assigned',
-  'exclusive_partner','assets_ready','push_notifications_ready','toto_live_date','albatros_live_date',
-  'planned_global_launch','notes'];
+  'exclusive_partner','toto_live_date','albatros_live_date','planned_global_launch',
+  'demo_link','marketing_email','notes'];
 
 const GTM_STEPS = [
-  {key:'assets_ready', label:'Assets', kind:'readiness'},
   {key:'toto_live_date', label:'Toto Live', kind:'date'},
   {key:'albatros_live_date', label:'Albatros', kind:'date'},
-  {key:'push_notifications_ready', label:'Push Notif.', kind:'readiness'},
-  {key:'planned_global_launch', label:'Global Launch', kind:'date'}
+  {key:'planned_global_launch', label:'Global Launch', kind:'date'},
+  {key:'demo_link', label:'Demo Link', kind:'link'},
+  {key:'marketing_email', label:'Emails', kind:'link'}
 ];
 
 let state = {};
@@ -1035,7 +1050,7 @@ function buildCalendarColgroup(cfg){
   if(!colgroup) return;
   let html = '';
   if(EDIT_MODE) html += `<col style="width:26px">`;
-  cfg.columns.forEach(c=>{
+  cfg.columns.filter(c=>!c.hideInCalendar).forEach(c=>{
     html += `<col data-key="${c.key}" style="width:${colWidthFor(c)}px">`;
   });
   if(EDIT_MODE) html += `<col style="width:40px">`;
@@ -1125,7 +1140,7 @@ function renderCalendarTable(){
   const leadTh = EDIT_MODE ? '<th style="width:26px" data-frozen-key="__drag"></th>' : '';
   const trailTh = EDIT_MODE ? '<th style="width:40px"></th>' : '';
 
-  headRow.innerHTML = leadTh + cfg.columns.map(c=>{
+  headRow.innerHTML = leadTh + cfg.columns.filter(c=>!c.hideInCalendar).map(c=>{
     const sortable = CALENDAR_SORTABLE_KEYS.includes(c.key);
     let arrow = '';
     if(sortable && calendarSort.key===c.key) arrow = `<span class="sort-arrow">${calendarSort.dir==='asc'?'▲':'▼'}</span>`;
@@ -1197,7 +1212,7 @@ function renderCalendarRow(cfg, row, dragEnabled){
     tr.appendChild(dragTd);
   }
 
-  cfg.columns.forEach((col, i)=>{
+  cfg.columns.filter(col=>!col.hideInCalendar).forEach((col, i)=>{
     const td = document.createElement('td');
     if(col.type==='number') td.classList.add('col-num');
     td.style.backgroundColor = (i % 2 === 0) ? 'var(--col-band-light)' : 'var(--col-band-dark)';
@@ -1672,6 +1687,14 @@ function readinessStatus(value){
   if(v==='No') return {state:'blocked', text:v};
   return {state:'pending', text:'Not set'};
 }
+/* Demo Link and Emails aren't readiness dropdowns or dates — they're plain
+   text/URL fields shared with the Release Calendar table. The step just
+   reflects whether something has been filled in yet. */
+function linkStepStatus(value){
+  const v = (value||'').toString().trim();
+  if(!v) return {state:'pending', text:'Not set'};
+  return {state:'done', text:'Ready'};
+}
 function dateStepStatus(value){
   const v = (value||'').toString().trim();
   if(!v) return {state:'pending', text:'Not set'};
@@ -1690,7 +1713,10 @@ function stepIcon(state){
 }
 function computeSteps(row){
   return GTM_STEPS.map(s=>{
-    const st = s.kind==='readiness' ? readinessStatus(row[s.key]) : dateStepStatus(row[s.key]);
+    let st;
+    if(s.kind==='readiness') st = readinessStatus(row[s.key]);
+    else if(s.kind==='link') st = linkStepStatus(row[s.key]);
+    else st = dateStepStatus(row[s.key]);
     return {...s, ...st};
   });
 }
@@ -1734,7 +1760,23 @@ function renderGTM(){
   });
 
   emptyNote.classList.toggle('hidden', filtered.length>0);
-  filtered.forEach(row=>grid.appendChild(renderGtmCard(row)));
+
+  /* Promo tools (Product Type = "Promo Tool") don't follow the same
+     assets → Toto → Albatros → push → launch pipeline as a real game, so
+     they're grouped separately at the bottom of the same grid — under a
+     divider and tinted purple — instead of mixed in with game releases. */
+  const games = filtered.filter(r => (r.product_type||'').trim() !== 'Promo Tool');
+  const promoTools = filtered.filter(r => (r.product_type||'').trim() === 'Promo Tool');
+
+  games.forEach(row=>grid.appendChild(renderGtmCard(row)));
+
+  if(promoTools.length){
+    const divider = document.createElement('div');
+    divider.className = 'gtm-promo-divider';
+    divider.innerHTML = `<span>Promo Tools</span><div class="line"></div>`;
+    grid.appendChild(divider);
+    promoTools.forEach(row=>grid.appendChild(renderGtmCard(row)));
+  }
 }
 
 function renderGtmSummary(rows){
@@ -1755,7 +1797,7 @@ function renderGtmCard(row){
   const steps = computeSteps(row);
   const progress = computeProgress(steps);
   const card = document.createElement('div');
-  card.className = 'gtm-card';
+  card.className = 'gtm-card' + ((row.product_type||'').trim()==='Promo Tool' ? ' promo-tool' : '');
   card.dataset.id = row.id;
 
   const head = document.createElement('div');
@@ -2132,14 +2174,14 @@ function renderDashboard(){
   const cal = (state.release_calendar||[]).filter(r=>r.game_name);
   const total = cal.length;
   const inProd = cal.filter(r=>r.stage==='Production').length;
-  const assetsReady = cal.filter(r=>['Ready','Yes'].includes((r.assets_ready||'').trim())).length;
-  const pushReady = cal.filter(r=>(r.push_notifications_ready||'').trim()==='Ready').length;
+  const demoLinkReady = cal.filter(r=>(r.demo_link||'').trim()).length;
+  const emailsReady = cal.filter(r=>(r.marketing_email||'').trim()).length;
 
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi"><div class="lbl">Total Games Tracked</div><div class="val">${total}</div></div>
     <div class="kpi"><div class="lbl">In Production</div><div class="val">${inProd}</div></div>
-    <div class="kpi"><div class="lbl">Assets Ready</div><div class="val">${assetsReady}</div></div>
-    <div class="kpi"><div class="lbl">Push Notifications Ready</div><div class="val">${pushReady}</div></div>
+    <div class="kpi"><div class="lbl">Demo Link Ready</div><div class="val">${demoLinkReady}</div></div>
+    <div class="kpi"><div class="lbl">Emails Ready</div><div class="val">${emailsReady}</div></div>
   `;
 
   const stageCounts = LISTS.stage.map(s=>cal.filter(r=>r.stage===s).length);
