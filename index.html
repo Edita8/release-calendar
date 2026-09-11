@@ -1124,11 +1124,6 @@ function sortCalendarRows(rows){
   });
 }
 
-/* ============ FIX: header row now puts the drag-handle placeholder FIRST
-   to match the body rows, which put the ⠿ drag cell first. Previously both
-   placeholder cells were appended only at the END of the header, causing
-   every header label to sit one column to the right of its real data
-   whenever Editor Mode was active. ============ */
 function renderCalendarTable(){
   const table = 'release_calendar';
   const cfg = TABLES[table];
@@ -1603,8 +1598,22 @@ async function commit(table, row, sourceView){
        position inside the rich-text note or destroy an in-progress resize. */
   }
   if(!ONLINE_MODE) return;
-  const {error} = await supa.from(table).update(row).eq('id', row.id);
-  if(error) console.warn('Update failed', table, error);
+  /* IMPORTANT: .select() is added here so we get back the row(s) that were
+     actually updated. Without it, Supabase's update() call returns no error
+     even when zero rows were affected (e.g. a Row-Level Security policy on
+     this table silently blocks the UPDATE for this key). That "successful
+     no-op" is exactly what was causing edits like Demo Link to appear saved
+     in the browser (local state + localStorage were updated) while never
+     actually reaching the shared database — so the value vanished the next
+     time the page loaded fresh data from Supabase. */
+  const {data, error} = await supa.from(table).update(row).eq('id', row.id).select();
+  if(error){
+    console.warn('Update failed', table, error);
+    reportError(`Could not save this change to "${TABLES[table]?.label || table}" in the shared database: ${error.message}. Your edit is only stored in this browser for now.`);
+  } else if(!data || data.length === 0){
+    console.warn('Update affected 0 rows — likely blocked by a Supabase Row-Level Security (RLS) policy', table, row.id);
+    reportError(`Your change to "${row.game_name || row.id}" was NOT saved to the shared database (0 rows updated — this usually means a Row-Level Security policy on the "${table}" table is blocking updates). It will disappear on refresh unless an admin fixes the UPDATE policy in Supabase.`);
+  }
 }
 
 async function addRow(table){
@@ -1621,8 +1630,14 @@ async function addRow(table){
   }
   renderDashboard();
   if(ONLINE_MODE){
-    const {error} = await supa.from(table).insert(blank);
-    if(error) console.warn('Insert failed', table, error);
+    const {data, error} = await supa.from(table).insert(blank).select();
+    if(error){
+      console.warn('Insert failed', table, error);
+      reportError(`Could not save the new row to "${TABLES[table]?.label || table}" in the shared database: ${error.message}. It only exists in this browser for now.`);
+    } else if(!data || data.length === 0){
+      console.warn('Insert affected 0 rows — likely blocked by a Supabase Row-Level Security (RLS) policy', table);
+      reportError(`The new row was NOT saved to the shared database (likely blocked by a Row-Level Security policy on "${table}"). It will disappear on refresh unless an admin fixes the INSERT policy in Supabase.`);
+    }
   }
   return blank;
 }
