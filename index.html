@@ -179,6 +179,9 @@
   .step.blocked .dot{background:var(--red-bg);border-color:var(--red-fg);color:var(--red-fg);}
   .step.na .dot{background:#fafafa;border-color:#eee;color:#ccc;}
   .step.pending .dot{background:#fff;border-color:#ddd;color:#bbb;}
+  .step.late .dot{background:var(--red-bg);border-color:var(--red-fg);color:var(--red-fg);}
+  .step.late .label{color:var(--red-fg);}
+  .step.late .value{color:var(--red-fg);font-weight:700;}
   .step .label{font-size:9.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.2px;}
   .step .value{font-size:10.5px;color:var(--muted);margin-top:2px;}
 
@@ -205,6 +208,7 @@
   .gtm-promo-divider span{font-size:11.5px;font-weight:700;color:var(--purple-fg);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
   .gtm-promo-divider .line{flex:1;height:1px;background:var(--border);}
   .gtm-card.promo-tool{background:#F7F2FC;border-color:#D9C7EF;border-top-color:var(--purple-fg);}
+  .gtm-card.is-late{border-top-color:var(--red-fg);}
   .gtm-card.promo-tool .gtm-card-head h3{color:var(--purple-fg);}
   .gtm-card.promo-tool .gtm-pct .num{color:var(--purple-fg);}
   .gtm-card.promo-tool .stepper::before{background:#E4D9F0;}
@@ -396,7 +400,7 @@
       <div class="panel-head">
         <div>
           <h2>Go-to-Market Pipeline</h2>
-          <p>Every game's path to launch: Toto → Albatros → global launch → demo link → emails</p>
+          <p>Every game's path to launch: Production → Toto → Albatros → global launch</p>
         </div>
         <div class="toolbar">
           <input class="search" id="gtmSearch" placeholder="Search games…" oninput="gtmFilter.search=this.value; renderGTM();">
@@ -759,15 +763,14 @@ const TABLES = {
 };
 
 const GTM_EDIT_KEYS = ['quarter','game_name','stage','product_type','product_owner','pm_assigned',
-  'exclusive_partner','toto_live_date','albatros_live_date','planned_global_launch',
-  'demo_link','marketing_email','notes'];
+  'exclusive_partner','planned_production_date','toto_live_date','albatros_live_date','planned_global_launch',
+  'notes'];
 
 const GTM_STEPS = [
+  {key:'planned_production_date', label:'Production', kind:'date'},
   {key:'toto_live_date', label:'Toto Live', kind:'date'},
   {key:'albatros_live_date', label:'Albatros', kind:'date'},
-  {key:'planned_global_launch', label:'Global Launch', kind:'date'},
-  {key:'demo_link', label:'Demo Link', kind:'link'},
-  {key:'marketing_email', label:'Emails', kind:'link'}
+  {key:'planned_global_launch', label:'Global Launch', kind:'date'}
 ];
 
 let state = {};
@@ -1733,13 +1736,31 @@ function stepIcon(state){
   return {done:'✓', scheduled:'●', progress:'●', blocked:'✕', na:'–', pending:'○'}[state] || '○';
 }
 function computeSteps(row){
-  return GTM_STEPS.map(s=>{
+  const steps = GTM_STEPS.map(s=>{
     let st;
     if(s.kind==='readiness') st = readinessStatus(row[s.key]);
     else if(s.kind==='link') st = linkStepStatus(row[s.key]);
     else st = dateStepStatus(row[s.key]);
     return {...s, ...st};
   });
+
+  /* Flag Global Launch in red whenever it's scheduled more than 40 days
+     after Planned Production — a long production-to-launch gap is worth
+     calling out regardless of whether the date itself is past, today, or
+     still upcoming. */
+  const prodVal = (row.planned_production_date||'').toString().trim();
+  const launchVal = (row.planned_global_launch||'').toString().trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(prodVal) && /^\d{4}-\d{2}-\d{2}$/.test(launchVal)){
+    const prodDate = new Date(prodVal+'T00:00:00');
+    const launchDate = new Date(launchVal+'T00:00:00');
+    const gapDays = Math.round((launchDate - prodDate) / 86400000);
+    if(gapDays > 40){
+      const launchStep = steps.find(s=>s.key==='planned_global_launch');
+      if(launchStep){ launchStep.late = true; launchStep.gapDays = gapDays; }
+    }
+  }
+
+  return steps;
 }
 function computeProgress(steps){
   const applicable = steps.filter(s=>s.state!=='na');
@@ -1817,8 +1838,9 @@ function renderGtmSummary(rows){
 function renderGtmCard(row){
   const steps = computeSteps(row);
   const progress = computeProgress(steps);
+  const isLate = steps.some(s=>s.late);
   const card = document.createElement('div');
-  card.className = 'gtm-card' + ((row.product_type||'').trim()==='Promo Tool' ? ' promo-tool' : '');
+  card.className = 'gtm-card' + ((row.product_type||'').trim()==='Promo Tool' ? ' promo-tool' : '') + (isLate ? ' is-late' : '');
   card.dataset.id = row.id;
 
   const head = document.createElement('div');
@@ -1832,6 +1854,7 @@ function renderGtmCard(row){
         ${badgeSpan(row.product_type, null)}
         ${row.stage ? badgeSpan(row.stage, STAGE_COLORS[row.stage]) : ''}
         ${row.exclusive_partner ? badgeSpan(row.exclusive_partner, ['--purple-bg','--purple-fg']) : ''}
+        ${isLate ? badgeSpan('⚠ Late', ['--red-bg','--red-fg']) : ''}
       </div>
     </div>
     <div class="gtm-pct">
@@ -1845,8 +1868,10 @@ function renderGtmCard(row){
   stepper.className = 'stepper';
   steps.forEach(s=>{
     const el = document.createElement('div');
-    el.className = 'step ' + s.state;
-    el.innerHTML = `<div class="dot" title="${escapeHtml(s.text)}">${stepIcon(s.state)}</div><div class="label">${s.label}</div><div class="value">${escapeHtml(s.text)}</div>`;
+    el.className = 'step ' + s.state + (s.late ? ' late' : '');
+    const icon = s.late ? '⚠' : stepIcon(s.state);
+    const title = s.late ? `${s.text} — ${s.gapDays} days after production (flagged: 40+ day gap)` : s.text;
+    el.innerHTML = `<div class="dot" title="${escapeHtml(title)}">${icon}</div><div class="label">${s.label}</div><div class="value">${escapeHtml(s.text)}</div>`;
     stepper.appendChild(el);
   });
   card.appendChild(stepper);
