@@ -111,6 +111,31 @@
   .prerelease-group-body .table-wrap{border:1px solid var(--border);}
   .prerelease-add-btn{width:100%;margin-top:8px;background:none;border:1px dashed #9dc3e8;color:var(--navy-light);border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
   .prerelease-add-btn:hover{background:var(--navy-pale);}
+
+  /* Two colored sub-sections inside each expanded game group: pre-release
+     partner rollouts (green) vs. the game's best/confirmed positions
+     (blue). Each gets its own header strip, table, and add button. */
+  .prerelease-section{margin-top:14px;}
+  .prerelease-section:first-child{margin-top:12px;}
+  .prerelease-section-head{display:flex;align-items:center;gap:8px;padding:6px 2px;margin-bottom:6px;}
+  .prerelease-section-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .prerelease-section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;}
+  .prerelease-section-count{font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;}
+  .prerelease-section-prerelease .prerelease-section-dot{background:var(--green-fg);}
+  .prerelease-section-prerelease .prerelease-section-title{color:var(--green-fg);}
+  .prerelease-section-prerelease .prerelease-section-count{background:var(--green-bg);color:var(--green-fg);}
+  .prerelease-section-prerelease .table-wrap{border:1px solid #B9DDA0;background:#F5FBF0;}
+  .prerelease-section-prerelease thead th{background:var(--green-fg);}
+  .prerelease-add-btn-prerelease{border-color:#9dc78d;color:var(--green-fg);}
+  .prerelease-add-btn-prerelease:hover{background:#EAF7E1;}
+  .prerelease-section-best .prerelease-section-dot{background:var(--blue-fg);}
+  .prerelease-section-best .prerelease-section-title{color:var(--blue-fg);}
+  .prerelease-section-best .prerelease-section-count{background:var(--blue-bg);color:var(--blue-fg);}
+  .prerelease-section-best .table-wrap{border:1px solid #9dc3e8;background:#F1F8FD;}
+  .prerelease-section-best thead th{background:var(--blue-fg);}
+  .prerelease-add-btn-best{border-color:#9dc3e8;color:var(--blue-fg);}
+  .prerelease-add-btn-best:hover{background:#E7F2FB;}
+  .prerelease-section .ticket-empty{padding:14px 0;}
   td input, td select, td textarea{
     width:100%;border:1px solid transparent;background:transparent;padding:6px 5px;font-size:12.5px;border-radius:4px;font-family:inherit;color:var(--text);
   }
@@ -713,6 +738,15 @@ const LISTS = {
 /* Fixed list of partner managers for the Pre-Release Tracker's PM dropdown. */
 const PM_LIST = ['Artavazd','Mikael','Meri','Yana','Rafael'];
 
+/* The two sub-sections shown inside each expanded game group in the
+   Pre-Release Tracker: pre-release partner rollouts (green) vs. the
+   game's best/confirmed positions (blue). */
+const PRERELEASE_SECTIONS = ['Pre-Release Positions', 'Best Positions'];
+const PRERELEASE_SECTION_COLORS = {
+  'Pre-Release Positions': ['--green-bg','--green-fg'],
+  'Best Positions': ['--blue-bg','--blue-fg']
+};
+
 /* Returns the current, deduplicated, alphabetised list of game names from
    the Release Calendar tab. Called fresh every time the Pre-Release Tracker's
    Game dropdown is built, so newly added games show up automatically. */
@@ -761,6 +795,7 @@ const TABLES = {
   pre_release: {
     label:'Pre-Release Tracker',
     columns:[
+      {key:'section', label:'Section', type:'select', options:PRERELEASE_SECTIONS, excludeFromGroupTable:true, w:0},
       {key:'pm', label:'PM', type:'select', options:PM_LIST, w:110},
       {key:'game', label:'Game', type:'combo', dynamicOptions:getReleaseCalendarGameNames, w:200},
       {key:'partner', label:'Partner', type:'text', w:140},
@@ -1349,7 +1384,7 @@ function reorderCalendarRows(draggedId, targetId, insertBefore){
 function renderRow(table, cfg, row){
   const tr = document.createElement('tr');
   tr.dataset.id = row.id;
-  cfg.columns.forEach(col=>{
+  cfg.columns.filter(col=>!col.excludeFromGroupTable).forEach(col=>{
     const td = document.createElement('td');
     if(col.type==='number') td.classList.add('col-num');
     td.appendChild(makeField(table, row, col, 'table'));
@@ -1411,7 +1446,6 @@ function renderPrerelease(){
 }
 
 function renderPrereleaseGameGroup(label, rows, forceOpen){
-  const cfg = TABLES.pre_release;
   const isOpen = forceOpen || openPrereleaseGames.has(label);
 
   const group = document.createElement('div');
@@ -1430,32 +1464,69 @@ function renderPrereleaseGameGroup(label, rows, forceOpen){
     const body = document.createElement('div');
     body.className = 'prerelease-group-body';
 
-    const tableWrap = document.createElement('div');
-    tableWrap.className = 'table-wrap';
-    const table = document.createElement('table');
-    const thead = document.createElement('thead');
-    const headRow = document.createElement('tr');
-    headRow.innerHTML = cfg.columns.map(c=>`<th style="min-width:${c.w}px">${c.label}</th>`).join('') + (EDIT_MODE ? '<th style="width:40px"></th>' : '');
-    thead.appendChild(headRow);
-    table.appendChild(thead);
-    const tbody = document.createElement('tbody');
-    rows.forEach(row=>tbody.appendChild(renderRow('pre_release', cfg, row)));
-    table.appendChild(tbody);
-    tableWrap.appendChild(table);
-    body.appendChild(tableWrap);
-
-    if(EDIT_MODE){
-      const addBtn = document.createElement('button');
-      addBtn.className = 'prerelease-add-btn';
-      addBtn.textContent = '+ Add Row to ' + (label===PRERELEASE_NO_GAME_LABEL ? 'this group' : label);
-      addBtn.onclick = ()=>addPrereleaseRow(label===PRERELEASE_NO_GAME_LABEL ? '' : label);
-      body.appendChild(addBtn);
-    }
+    /* Split this game's rows into the two sections. Anything without a
+       section set yet (older rows) defaults to Pre-Release Positions so
+       nothing existing silently disappears. */
+    PRERELEASE_SECTIONS.forEach(section=>{
+      const sectionRows = rows.filter(r => (r.section || PRERELEASE_SECTIONS[0]) === section);
+      body.appendChild(renderPrereleaseSection(label, section, sectionRows));
+    });
 
     group.appendChild(body);
   }
 
   return group;
+}
+
+/* One colored sub-section (Pre-Release Positions or Best Positions) inside
+   an expanded game group, each with its own table and its own "+ Add" button
+   that pre-fills the section so new rows land in the right place. */
+function renderPrereleaseSection(gameLabel, section, rows){
+  const cfg = TABLES.pre_release;
+  const colorKey = section === 'Best Positions' ? 'best' : 'prerelease';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'prerelease-section prerelease-section-' + colorKey;
+
+  const head = document.createElement('div');
+  head.className = 'prerelease-section-head';
+  head.innerHTML = `<span class="prerelease-section-dot"></span><span class="prerelease-section-title">${escapeHtml(section)}</span><span class="prerelease-section-count">${rows.length}</span>`;
+  wrap.appendChild(head);
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'table-wrap';
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  const visibleColumns = cfg.columns.filter(c=>!c.excludeFromGroupTable);
+  headRow.innerHTML = visibleColumns.map(c=>`<th style="min-width:${c.w}px">${c.label}</th>`).join('') + (EDIT_MODE ? '<th style="width:40px"></th>' : '');
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  if(!rows.length){
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = visibleColumns.length + (EDIT_MODE ? 1 : 0);
+    td.className = 'ticket-empty';
+    td.textContent = 'No rows yet.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  } else {
+    rows.forEach(row=>tbody.appendChild(renderRow('pre_release', cfg, row)));
+  }
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  wrap.appendChild(tableWrap);
+
+  if(EDIT_MODE){
+    const addBtn = document.createElement('button');
+    addBtn.className = 'prerelease-add-btn prerelease-add-btn-' + colorKey;
+    addBtn.textContent = '+ Add ' + section.replace(' Positions','') + ' Row';
+    addBtn.onclick = ()=>addPrereleaseRow(gameLabel===PRERELEASE_NO_GAME_LABEL ? '' : gameLabel, section);
+    wrap.appendChild(addBtn);
+  }
+
+  return wrap;
 }
 
 function expandAllPrereleaseGroups(){
@@ -1470,10 +1541,11 @@ function collapseAllPrereleaseGroups(){
   renderPrerelease();
 }
 
-async function addPrereleaseRow(game){
+async function addPrereleaseRow(game, section){
   const blank = {id: crypto.randomUUID()};
   TABLES.pre_release.columns.forEach(c=>blank[c.key]=null);
   blank.game = game || null;
+  blank.section = section || PRERELEASE_SECTIONS[0];
   state.pre_release.push(blank);
   openPrereleaseGames.add(game && game.trim() ? game.trim() : PRERELEASE_NO_GAME_LABEL);
   persistLocal('pre_release');
