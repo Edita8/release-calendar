@@ -213,6 +213,13 @@
   .gtm-card.promo-tool .gtm-pct .num{color:var(--purple-fg);}
   .gtm-card.promo-tool .stepper::before{background:#E4D9F0;}
 
+  /* --- Release Schedule: 12-month coverage strip --- */
+  #scheduleCoverageStrip{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-bottom:16px;}
+  .coverage-chip{border-radius:8px;padding:8px 4px;text-align:center;}
+  .coverage-chip .cm{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;opacity:.8;}
+  .coverage-chip .cn{font-size:18px;font-weight:800;margin-top:2px;}
+  .coverage-legend{font-size:11.5px;color:var(--muted);margin:-8px 0 16px;}
+
   /* --- Release Schedule board (monthly sticky-note style cards) --- */
   #scheduleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;align-items:start;}
   .month-card{background:#EAF5E4;border:1px solid #CFE7C4;border-radius:14px;padding:20px;}
@@ -252,6 +259,18 @@
   .sticky-note-header select{
     background:transparent; border:none; outline:none; cursor:pointer;
     font-size:11px; font-weight:600; color:inherit; opacity:.75; font-family:inherit;
+  }
+  .sticky-note-header .sticky-note-date-input{
+    flex:0 0 auto; width:120px;
+    background:transparent; border:none; outline:none; cursor:pointer;
+    font-size:11px; font-weight:600; color:inherit; opacity:.85; font-family:inherit;
+    padding:2px 0;
+  }
+  .sticky-note-header .sticky-note-mismatch{
+    font-size:12px; color:#833C00; flex-shrink:0; cursor:help;
+  }
+  .sticky-note-date{
+    font-size:11.5px; font-weight:700; padding:0 10px 4px; opacity:.8; flex-shrink:0;
   }
   .sticky-note-header .note-del{
     background:transparent; border:none; cursor:pointer;
@@ -461,8 +480,9 @@
     <!-- RELEASE SCHEDULE -->
     <section class="panel" id="panel-schedule">
       <div class="panel-head">
-        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Format each note with the toolbar (bold, italic, underline, strikethrough, bullet list, image) and drag a note's bottom-right corner to resize it.</p></div>
+        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Give each note a game name and release date so nothing slips through — the strip below flags any month with no release yet.</p></div>
       </div>
+      <div id="scheduleCoverageStrip"></div>
       <div class="panel-head" style="margin-bottom:10px;">
         <div class="chiprow" id="scheduleQuarterChips"></div>
       </div>
@@ -734,6 +754,7 @@ const TABLES = {
     columns:[
       {key:'month', label:'Month', type:'text', w:120},
       {key:'game_name', label:'Game', type:'text', w:170},
+      {key:'release_date', label:'Release Date', type:'date', w:120},
       {key:'notes', label:'Details', type:'textarea', w:260},
       {key:'notes_html', label:'Details (rich text)', type:'textarea', w:260},
       {key:'width', label:'Width', type:'text', w:80},
@@ -1956,6 +1977,32 @@ function renderSchedule(){
   });
 
   if(emptyNote) emptyNote.classList.add('hidden');
+  renderScheduleCoverage();
+}
+
+/* 12-month coverage strip — always shows the whole year regardless of the
+   quarter filter, so a gap in a quarter you're not currently viewing is
+   still visible. A month counts a game once it has both a game name and a
+   release date filled in; a name with no date yet still counts (so an
+   early idea shows up as "in progress"), just colored amber instead of
+   green so it reads as not-fully-confirmed. */
+function renderScheduleCoverage(){
+  const el = document.getElementById('scheduleCoverageStrip');
+  if(!el) return;
+  const tickets = (state.schedule_tickets || []).filter(t => (t.game_name||'').trim());
+
+  el.innerHTML = MONTHS.map(m=>{
+    const monthTickets = tickets.filter(t=>t.month===m);
+    const dated = monthTickets.filter(t=>(t.release_date||'').trim());
+    let bgVar, fgVar;
+    if(monthTickets.length === 0){ bgVar='--red-bg'; fgVar='--red-fg'; }
+    else if(dated.length === 0){ bgVar='--yellow-bg'; fgVar='--yellow-fg'; }
+    else { bgVar='--green-bg'; fgVar='--green-fg'; }
+    return `<div class="coverage-chip" style="background:var(${bgVar});color:var(${fgVar})" title="${monthTickets.length} game(s), ${dated.length} with a confirmed date">
+      <div class="cm">${m.slice(0,3)}</div>
+      <div class="cn">${monthTickets.length}</div>
+    </div>`;
+  }).join('');
 }
 
 function renderScheduleMonthCard(month, tickets){
@@ -2052,6 +2099,13 @@ function renderScheduleTicket(t){
     title.textContent = t.game_name || 'Untitled';
     note.appendChild(title);
 
+    if((t.release_date||'').trim()){
+      const dateLine = document.createElement('div');
+      dateLine.className = 'sticky-note-date';
+      dateLine.textContent = formatDateNice(t.release_date);
+      note.appendChild(dateLine);
+    }
+
     const body = document.createElement('div');
     body.className = 'sticky-note-body';
     const html = migrateTicketNotesToHtml(t);
@@ -2062,7 +2116,10 @@ function renderScheduleTicket(t){
     return wrap;
   }
 
-  /* --- Title bar: game name + month, typed directly on the note color --- */
+  /* --- Title bar: game name, release date, and month, typed directly on
+     the note color. The release date is the field the coverage strip
+     counts on; picking one auto-fills the month below so the two stay in
+     sync, though the month can still be overridden by hand afterwards. */
   const header = document.createElement('div');
   header.className = 'sticky-note-header';
 
@@ -2082,12 +2139,43 @@ function renderScheduleTicket(t){
     if(m===t.month) o.selected = true;
     monthSelect.appendChild(o);
   });
+
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.className = 'sticky-note-date-input';
+  dateInput.title = 'Release date';
+  dateInput.value = t.release_date || '';
+  dateInput.addEventListener('change', ()=>{
+    t.release_date = dateInput.value || null;
+    if(t.release_date){
+      const d = new Date(t.release_date+'T00:00:00');
+      if(!isNaN(d)){
+        t.month = MONTHS[d.getMonth()];
+        monthSelect.value = t.month;
+      }
+    }
+    commit('schedule_tickets', t, 'schedule');
+    renderSchedule();
+  });
+  header.appendChild(dateInput);
+
   monthSelect.addEventListener('change', ()=>{
     t.month = monthSelect.value;
     commit('schedule_tickets', t, 'schedule');
     renderSchedule();
   });
   header.appendChild(monthSelect);
+
+  if((t.release_date||'').trim()){
+    const d = new Date(t.release_date+'T00:00:00');
+    if(!isNaN(d) && MONTHS[d.getMonth()] !== t.month){
+      const warn = document.createElement('span');
+      warn.className = 'sticky-note-mismatch';
+      warn.textContent = '⚠';
+      warn.title = 'Release date doesn\'t fall in the selected month';
+      header.appendChild(warn);
+    }
+  }
 
   const colorBtn = document.createElement('button');
   colorBtn.type = 'button';
@@ -2204,7 +2292,7 @@ function renderScheduleTicket(t){
 }
 
 async function addScheduleTicket(month){
-  const blank = { id: crypto.randomUUID(), month, game_name: '', notes: '', notes_html: '', width: null, height: null };
+  const blank = { id: crypto.randomUUID(), month, game_name: '', release_date: null, notes: '', notes_html: '', width: null, height: null };
   state.schedule_tickets.push(blank);
   persistLocal('schedule_tickets');
   renderSchedule();
