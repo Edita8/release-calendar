@@ -217,7 +217,7 @@
      as a dark nav list (dot + name + count badge) like the reference
      project sidebar rather than solid colored tiles. --- */
   .schedule-layout{display:flex;gap:20px;align-items:flex-start;}
-  .schedule-sidebar{width:190px;flex-shrink:0;background:var(--header-dark);border-radius:14px;padding:14px 8px;position:sticky;top:16px;}
+  .schedule-sidebar{width:190px;flex-shrink:0;background:var(--header-dark);border-radius:14px;padding:14px 8px;position:sticky;top:16px;min-height:calc(100vh - 170px);}
   .schedule-content{flex:1;min-width:0;}
   .schedule-sidebar-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:#8d81c9;font-weight:700;padding:4px 8px 8px;}
   .schedule-all-btn{display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:#c7bff2;background:transparent;border:none;width:100%;text-align:left;margin-bottom:6px;}
@@ -266,51 +266,51 @@
     border-radius:10px;
     box-shadow:0 2px 6px rgba(0,0,0,0.10);
     resize:both; overflow:auto;
-    min-width:210px; min-height:150px;
+    min-width:150px; min-height:110px;
     max-width:100%;
   }
   .sticky-note-header{
-    display:flex; align-items:center; gap:6px;
-    padding:8px 10px 2px;
+    display:flex; align-items:center; gap:5px;
+    padding:6px 8px 2px;
     flex-shrink:0;
   }
   .sticky-note-header input[type="text"]{
     flex:1; min-width:0;
     background:transparent; border:none; outline:none;
-    font-weight:700; font-size:13.5px; font-family:inherit;
+    font-weight:700; font-size:12px; font-family:inherit;
     color:inherit; padding:2px 0;
   }
   .sticky-note-header input[type="text"]::placeholder{ color:rgba(0,0,0,.35); }
   .sticky-note-header select{
     background:transparent; border:none; outline:none; cursor:pointer;
-    font-size:11px; font-weight:600; color:inherit; opacity:.75; font-family:inherit;
+    font-size:10px; font-weight:600; color:inherit; opacity:.75; font-family:inherit;
   }
   .sticky-note-header .sticky-note-date-input{
-    flex:0 0 auto; width:120px;
+    flex:0 0 auto; width:98px;
     background:transparent; border:none; outline:none; cursor:pointer;
-    font-size:11px; font-weight:600; color:inherit; opacity:.85; font-family:inherit;
+    font-size:10px; font-weight:600; color:inherit; opacity:.85; font-family:inherit;
     padding:2px 0;
   }
   .sticky-note-header .sticky-note-mismatch{
-    font-size:12px; color:#833C00; flex-shrink:0; cursor:help;
+    font-size:11px; color:#833C00; flex-shrink:0; cursor:help;
   }
   .sticky-note-date{
-    font-size:11.5px; font-weight:700; padding:0 10px 4px; opacity:.8; flex-shrink:0;
+    font-size:10.5px; font-weight:700; padding:0 8px 3px; opacity:.8; flex-shrink:0;
   }
   .sticky-note-header .note-del{
     background:transparent; border:none; cursor:pointer;
-    color:inherit; opacity:.45; font-size:15px; padding:2px 4px; line-height:1;
+    color:inherit; opacity:.45; font-size:13px; padding:2px 3px; line-height:1;
   }
   .sticky-note-header .note-del:hover{ opacity:.85; }
 
   /* Small color-swatch button in the title bar that opens a popover of
      pastel color dots to click (like choosing a sticky-note color). */
   .sticky-note-header .note-color-btn{
-    width:16px; height:16px; border-radius:50%; border:1px solid rgba(0,0,0,.25);
+    width:14px; height:14px; border-radius:50%; border:1px solid rgba(0,0,0,.25);
     cursor:pointer; flex-shrink:0; padding:0;
   }
   .sticky-color-popover{
-    position:absolute; top:30px; right:8px; z-index:20;
+    position:absolute; top:28px; right:6px; z-index:20;
     background:#fff; border:1px solid var(--border); border-radius:10px;
     box-shadow:0 6px 18px rgba(0,0,0,.18);
     padding:8px; display:flex; gap:6px;
@@ -321,18 +321,18 @@
   }
   .sticky-color-popover button.selected{ border-color:var(--navy); }
   .sticky-note-view-title{
-    font-weight:700; font-size:13.5px; padding:8px 10px 2px; flex-shrink:0;
+    font-weight:700; font-size:12.5px; padding:7px 8px 1px; flex-shrink:0;
   }
 
   /* The typing surface fills the rest of the colored note — fully
      transparent so the note's own background color shows through. */
   .sticky-note-body{
     flex:1; overflow:auto;
-    padding:2px 10px 8px;
-    font-size:12.5px; line-height:1.5; color:inherit;
+    padding:2px 8px 6px;
+    font-size:11.5px; line-height:1.45; color:inherit;
     outline:none; background:transparent;
   }
-  .sticky-note-body ul{ margin:4px 0; padding-left:18px; }
+  .sticky-note-body ul{ margin:4px 0; padding-left:16px; }
   .sticky-note-body img{ max-width:100%; border-radius:4px; margin-top:4px; }
   .sticky-note-body[contenteditable]:empty:before{ content:attr(data-placeholder); color:rgba(0,0,0,.38); }
 
@@ -341,14 +341,14 @@
      note toolbar (B / I / U / S / bullet list / image), no boxed pink bar. */
   .sticky-note-toolbar{
     display:flex; align-items:center; gap:1px;
-    padding:5px 7px;
+    padding:4px 6px;
     border-top:1px solid rgba(0,0,0,.08);
     background:rgba(255,255,255,.28);
     flex-shrink:0;
   }
   .sticky-note-toolbar button{
-    width:25px; height:23px; border:none; background:transparent; border-radius:4px;
-    cursor:pointer; font-size:12.5px; color:inherit; opacity:.75;
+    width:21px; height:19px; border:none; background:transparent; border-radius:4px;
+    cursor:pointer; font-size:11px; color:inherit; opacity:.75;
     display:flex; align-items:center; justify-content:center; font-family:inherit;
   }
   .sticky-note-toolbar button:hover{ opacity:1; background:rgba(0,0,0,.08); }
@@ -356,10 +356,9 @@
   .sticky-note-toolbar button.i{ font-style:italic; font-weight:600; }
   .sticky-note-toolbar button.u{ text-decoration:underline; font-weight:600; }
   .sticky-note-toolbar button.s{ text-decoration:line-through; font-weight:600; }
-  .sticky-note-toolbar .sep{ width:1px; height:15px; background:rgba(0,0,0,.12); margin:0 3px; }
+  .sticky-note-toolbar .sep{ width:1px; height:13px; background:rgba(0,0,0,.12); margin:0 2px; }
   .sticky-note-toolbar input[type="file"]{ display:none; }
 
-  .ticket{margin-bottom:18px;}
   .ticket:last-child{margin-bottom:0;}
   .ticket-empty{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 16px;}
   .add-ticket-btn{width:100%;margin-top:6px;background:none;border:1px dashed #9dc78d;color:#2F5233;border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
@@ -489,13 +488,13 @@
     <!-- PRE-RELEASE -->
     <section class="panel" id="panel-prerelease">
       <div class="panel-head">
-        <div><h2>Pre-Release Tracker</h2><p>Soft-launch and pre-release partner rollouts, grouped by game — click a game to expand it.</p></div>
+        <div><h2>Pre-Release Tracker</h2><p>Soft-launch and pre-release partner rollouts, grouped by game — click a game to expand it. Click ADD, then type the game name straight into the row (suggestions come from Release Calendar, but any name works).</p></div>
         <div class="toolbar">
           <input class="search" id="prereleaseSearchInput" placeholder="Search…" oninput="prereleaseFilter.text=this.value; renderPrerelease();">
           <button class="btn secondary" onclick="expandAllPrereleaseGroups()">Expand All</button>
           <button class="btn secondary" onclick="collapseAllPrereleaseGroups()">Collapse All</button>
           <button class="btn editor-only" onclick="promptAddPrereleaseGame()">+ Add Game</button>
-          <button class="btn editor-only" onclick="addRow('pre_release')">+ Add Row</button>
+          <button class="btn editor-only" onclick="addRow('pre_release')">+ ADD</button>
         </div>
       </div>
       <div id="prereleaseAccordion"></div>
@@ -763,7 +762,7 @@ const TABLES = {
     label:'Pre-Release Tracker',
     columns:[
       {key:'pm', label:'PM', type:'select', options:PM_LIST, w:110},
-      {key:'game', label:'Game', type:'select', dynamicOptions:getReleaseCalendarGameNames, w:200},
+      {key:'game', label:'Game', type:'combo', dynamicOptions:getReleaseCalendarGameNames, w:200},
       {key:'partner', label:'Partner', type:'text', w:140},
       {key:'date_window', label:'Date / Window', type:'text', w:130},
       {key:'market', label:'Market', type:'text', w:120},
@@ -1549,6 +1548,22 @@ function makeField(table, row, col, sourceView){
       applyBoolBadge(el, row[col.key]);
       commit(table,row,sourceView);
     });
+  } else if(col.type==='combo'){
+    el = document.createElement('input');
+    el.type = 'text';
+    el.value = row[col.key] ?? '';
+    if(typeof col.dynamicOptions === 'function'){
+      const listId = 'datalist_' + table + '_' + col.key;
+      let datalist = document.getElementById(listId);
+      if(!datalist){
+        datalist = document.createElement('datalist');
+        datalist.id = listId;
+        document.body.appendChild(datalist);
+      }
+      datalist.innerHTML = col.dynamicOptions().map(opt=>`<option value="${escapeHtml(opt)}">`).join('');
+      el.setAttribute('list', listId);
+    }
+    bindTextCommit(el, cellId, table, row, col, null, sourceView);
   } else if(col.type==='textarea'){
     el = document.createElement('textarea');
     el.rows = 1;
