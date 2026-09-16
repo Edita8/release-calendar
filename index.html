@@ -213,15 +213,40 @@
   .gtm-card.promo-tool .gtm-pct .num{color:var(--purple-fg);}
   .gtm-card.promo-tool .stepper::before{background:#E4D9F0;}
 
-  /* --- Release Schedule: 12-month coverage strip --- */
-  #scheduleCoverageStrip{display:grid;grid-template-columns:repeat(12,1fr);gap:6px;margin-bottom:16px;}
-  .coverage-chip{border-radius:8px;padding:8px 4px;text-align:center;}
-  .coverage-chip .cm{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;opacity:.8;}
-  .coverage-chip .cn{font-size:18px;font-weight:800;margin-top:2px;}
-  .coverage-legend{font-size:11.5px;color:var(--muted);margin:-8px 0 16px;}
+  /* --- Release Schedule: left sidebar of clickable month cards, styled
+     as a dark nav list (dot + name + count badge) like the reference
+     project sidebar rather than solid colored tiles. --- */
+  .schedule-layout{display:flex;gap:20px;align-items:flex-start;}
+  .schedule-sidebar{width:190px;flex-shrink:0;background:var(--header-dark);border-radius:14px;padding:14px 8px;position:sticky;top:16px;}
+  .schedule-content{flex:1;min-width:0;}
+  .schedule-sidebar-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:#8d81c9;font-weight:700;padding:4px 8px 8px;}
+  .schedule-all-btn{display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;color:#c7bff2;background:transparent;border:none;width:100%;text-align:left;margin-bottom:6px;}
+  .schedule-all-btn::before{content:'';width:8px;height:8px;border-radius:2px;background:#9C8CFF;flex-shrink:0;}
+  .schedule-all-btn:hover{background:rgba(255,255,255,0.06);}
+  .schedule-all-btn.active{background:rgba(156,140,255,0.22);color:#fff;}
+  .schedule-month-btn{display:flex;align-items:center;gap:7px;padding:7px 8px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#c7bff2;background:transparent;border:none;width:100%;text-align:left;}
+  .schedule-month-btn:hover{background:rgba(255,255,255,0.06);}
+  .schedule-month-btn.active{background:rgba(255,255,255,0.1);color:#fff;}
+  .schedule-month-btn .msticker{font-size:13px;flex-shrink:0;width:16px;text-align:center;}
+  .schedule-month-btn .mdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .schedule-month-btn.has-games .mdot{background:#4ADE80;}
+  .schedule-month-btn.is-empty .mdot{background:#F87171;}
+  .schedule-month-btn .mname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .schedule-month-btn .mbadge{font-size:10px;font-weight:800;min-width:16px;height:16px;padding:0 4px;border-radius:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .schedule-month-btn.has-games .mbadge{background:rgba(74,222,128,0.18);color:#4ADE80;}
+  .schedule-month-btn.is-empty .mbadge{background:rgba(248,113,113,0.18);color:#F87171;}
+  @media (max-width:640px){ .schedule-layout{flex-direction:column;} .schedule-sidebar{width:100%;position:static;} }
 
   /* --- Release Schedule board (monthly sticky-note style cards) --- */
   #scheduleGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px;align-items:start;}
+  #scheduleGrid.single-month{display:block;}
+  .schedule-month-detail{background:#fff;border:1px solid var(--border);border-radius:14px;padding:22px;box-shadow:0 2px 10px rgba(46,32,105,0.06);}
+  .schedule-month-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .schedule-month-detail-head h3{margin:0;font-size:19px;color:var(--navy);}
+  .schedule-month-detail-head-right{display:flex;align-items:center;gap:12px;}
+  .schedule-month-detail-count{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .schedule-month-detail-tickets{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;}
+  .schedule-month-detail-tickets .ticket{margin-bottom:0;}
   .month-card{background:#EAF5E4;border:1px solid #CFE7C4;border-radius:14px;padding:20px;}
   .month-card h3{margin:0 0 16px;text-align:center;text-decoration:underline;letter-spacing:.5px;color:#2F5233;font-size:14px;text-transform:uppercase;font-weight:700;}
   .ticket{margin-bottom:18px;}
@@ -480,14 +505,15 @@
     <!-- RELEASE SCHEDULE -->
     <section class="panel" id="panel-schedule">
       <div class="panel-head">
-        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Give each note a game name and release date so nothing slips through — the strip below flags any month with no release yet.</p></div>
+        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Give each note a game name and release date. Click a month on the left to jump to it — green means it has games, red means it's still empty.</p></div>
       </div>
-      <div id="scheduleCoverageStrip"></div>
-      <div class="panel-head" style="margin-bottom:10px;">
-        <div class="chiprow" id="scheduleQuarterChips"></div>
+      <div class="schedule-layout">
+        <aside class="schedule-sidebar" id="scheduleSidebar"></aside>
+        <div class="schedule-content">
+          <div id="scheduleGrid"></div>
+          <div id="scheduleEmpty" class="empty-note hidden">No releases scheduled for this period.</div>
+        </div>
       </div>
-      <div id="scheduleGrid"></div>
-      <div id="scheduleEmpty" class="empty-note hidden">No releases scheduled for this period.</div>
     </section>
 
     <!-- TOP PARTNERS -->
@@ -801,13 +827,14 @@ const editingCells = new Set();
 const openGtmCards = new Set();
 let gtmFilter = { quarter:'All', pendingOnly:false, search:'' };
 let calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
-let scheduleFilter = { quarter:'All' };
+let scheduleFilter = { month:'All' };
 let prereleaseFilter = { text:'' };
 const openPrereleaseGames = new Set();
 const PRERELEASE_NO_GAME_LABEL = '— No game selected —';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const MONTH_QUARTERS = { January:'Q1', February:'Q1', March:'Q1', April:'Q2', May:'Q2', June:'Q2', July:'Q3', August:'Q3', September:'Q3', October:'Q4', November:'Q4', December:'Q4' };
+const MONTH_STICKERS = { January:'❄️', February:'💘', March:'🌱', April:'🌧️', May:'🌷', June:'☀️', July:'🎆', August:'🏖️', September:'🍂', October:'🎃', November:'🦃', December:'🎄' };
 
 /* Pastel sticky-note colors (background + matching text color), styled
    after the OS Sticky Notes palette. If a ticket has an explicit `color`
@@ -842,7 +869,6 @@ let calendarColWidths = {};
 async function boot(){
   try{ setupTabs(); } catch(e){ reportError('Failed to set up navigation: ' + (e.message||e)); }
   try{ buildGtmQuarterChips(); } catch(e){ reportError('Failed to set up filters: ' + (e.message||e)); }
-  try{ buildScheduleQuarterChips(); } catch(e){ reportError('Failed to set up schedule filters: ' + (e.message||e)); }
   try{ populateCalendarFilterOptions(); } catch(e){ reportError('Failed to set up calendar filters: ' + (e.message||e)); }
   try{ loadCalendarColWidths(); } catch(e){ console.warn('Could not load saved column widths', e); }
   document.getElementById('settingsScopeNote').textContent = 'Changing a PIN here updates it for everyone who opens this tracker.';
@@ -1947,18 +1973,34 @@ function renderGtmCard(row){
   return card;
 }
 
-function buildScheduleQuarterChips(){
-  const wrap = document.getElementById('scheduleQuarterChips');
-  if(!wrap) return;
-  const opts = ['All', ...LISTS.quarter];
-  wrap.innerHTML = opts.map(q=>`<button class="chip${q==='All'?' active':''}" data-q="${q}">${q}</button>`).join('');
-  wrap.querySelectorAll('.chip').forEach(chip=>{
-    chip.addEventListener('click', ()=>{
-      wrap.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
-      chip.classList.add('active');
-      scheduleFilter.quarter = chip.dataset.q;
-      renderSchedule();
-    });
+function renderScheduleSidebar(){
+  const el = document.getElementById('scheduleSidebar');
+  if(!el) return;
+  const tickets = (state.schedule_tickets || []).filter(t => (t.game_name||'').trim());
+
+  el.innerHTML = '';
+
+  const label = document.createElement('div');
+  label.className = 'schedule-sidebar-label';
+  label.textContent = 'Schedule';
+  el.appendChild(label);
+
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = 'schedule-all-btn' + (scheduleFilter.month==='All' ? ' active' : '');
+  allBtn.textContent = 'All months';
+  allBtn.onclick = ()=>{ scheduleFilter.month = 'All'; renderSchedule(); };
+  el.appendChild(allBtn);
+
+  MONTHS.forEach(m=>{
+    const count = tickets.filter(t=>t.month===m).length;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'schedule-month-btn ' + (count>0 ? 'has-games' : 'is-empty') + (scheduleFilter.month===m ? ' active' : '');
+    btn.title = `${m}: ${count} game${count===1?'':'s'}`;
+    btn.innerHTML = `<span class="msticker">${MONTH_STICKERS[m]||''}</span><span class="mdot"></span><span class="mname">${m}</span><span class="mbadge">${count}</span>`;
+    btn.onclick = ()=>{ scheduleFilter.month = m; renderSchedule(); };
+    el.appendChild(btn);
   });
 }
 
@@ -1969,40 +2011,72 @@ function renderSchedule(){
   grid.innerHTML = '';
 
   const tickets = state.schedule_tickets || [];
-  const monthsToShow = MONTHS.filter(m => scheduleFilter.quarter==='All' || MONTH_QUARTERS[m]===scheduleFilter.quarter);
 
-  monthsToShow.forEach(month=>{
+  if(scheduleFilter.month === 'All'){
+    grid.classList.remove('single-month');
+    MONTHS.forEach(month=>{
+      const monthTickets = tickets.filter(t=>t.month===month);
+      grid.appendChild(renderScheduleMonthCard(month, monthTickets));
+    });
+  } else {
+    grid.classList.add('single-month');
+    const month = scheduleFilter.month;
     const monthTickets = tickets.filter(t=>t.month===month);
-    grid.appendChild(renderScheduleMonthCard(month, monthTickets));
-  });
+    grid.appendChild(renderScheduleMonthDetail(month, monthTickets));
+  }
 
   if(emptyNote) emptyNote.classList.add('hidden');
-  renderScheduleCoverage();
+  renderScheduleSidebar();
 }
 
-/* 12-month coverage strip — always shows the whole year regardless of the
-   quarter filter, so a gap in a quarter you're not currently viewing is
-   still visible. A month counts a game once it has both a game name and a
-   release date filled in; a name with no date yet still counts (so an
-   early idea shows up as "in progress"), just colored amber instead of
-   green so it reads as not-fully-confirmed. */
-function renderScheduleCoverage(){
-  const el = document.getElementById('scheduleCoverageStrip');
-  if(!el) return;
-  const tickets = (state.schedule_tickets || []).filter(t => (t.game_name||'').trim());
+/* Single-month detail panel — shown on the right, next to the sidebar,
+   once a specific month is clicked. Lays that month's sticky notes out
+   full width instead of squeezing them into the small grid tile used in
+   the "All months" overview. */
+function renderScheduleMonthDetail(month, tickets){
+  const wrap = document.createElement('div');
+  wrap.className = 'schedule-month-detail';
 
-  el.innerHTML = MONTHS.map(m=>{
-    const monthTickets = tickets.filter(t=>t.month===m);
-    const dated = monthTickets.filter(t=>(t.release_date||'').trim());
-    let bgVar, fgVar;
-    if(monthTickets.length === 0){ bgVar='--red-bg'; fgVar='--red-fg'; }
-    else if(dated.length === 0){ bgVar='--yellow-bg'; fgVar='--yellow-fg'; }
-    else { bgVar='--green-bg'; fgVar='--green-fg'; }
-    return `<div class="coverage-chip" style="background:var(${bgVar});color:var(${fgVar})" title="${monthTickets.length} game(s), ${dated.length} with a confirmed date">
-      <div class="cm">${m.slice(0,3)}</div>
-      <div class="cn">${monthTickets.length}</div>
-    </div>`;
-  }).join('');
+  const head = document.createElement('div');
+  head.className = 'schedule-month-detail-head';
+
+  const titleEl = document.createElement('h3');
+  titleEl.textContent = `${MONTH_STICKERS[month]||''} ${month}`;
+  head.appendChild(titleEl);
+
+  const rightWrap = document.createElement('div');
+  rightWrap.className = 'schedule-month-detail-head-right';
+
+  const countEl = document.createElement('span');
+  countEl.className = 'schedule-month-detail-count';
+  countEl.textContent = `${tickets.length} game${tickets.length===1?'':'s'}`;
+  rightWrap.appendChild(countEl);
+
+  if(EDIT_MODE){
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn';
+    addBtn.textContent = '+ Add sticker';
+    addBtn.onclick = ()=>addScheduleTicket(month);
+    rightWrap.appendChild(addBtn);
+  }
+
+  head.appendChild(rightWrap);
+  wrap.appendChild(head);
+
+  const ticketsWrap = document.createElement('div');
+  ticketsWrap.className = 'schedule-month-detail-tickets';
+
+  if(!tickets.length){
+    const empty = document.createElement('div');
+    empty.className = 'ticket-empty';
+    empty.textContent = EDIT_MODE ? 'No tickets yet.' : 'No releases scheduled.';
+    ticketsWrap.appendChild(empty);
+  }
+
+  tickets.forEach(t=>ticketsWrap.appendChild(renderScheduleTicket(t)));
+  wrap.appendChild(ticketsWrap);
+
+  return wrap;
 }
 
 function renderScheduleMonthCard(month, tickets){
