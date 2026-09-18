@@ -2436,13 +2436,11 @@ function renderDashboard(){
   const total = cal.length;
   const inProd = cal.filter(r=>r.stage==='Production').length;
   const demoLinkReady = cal.filter(r=>(r.demo_link||'').trim()).length;
-  const emailsReady = cal.filter(r=>(r.marketing_email||'').trim()).length;
 
   document.getElementById('kpiRow').innerHTML = `
     <div class="kpi"><div class="lbl">Total Games Tracked</div><div class="val">${total}</div></div>
     <div class="kpi"><div class="lbl">In Production</div><div class="val">${inProd}</div></div>
     <div class="kpi"><div class="lbl">Demo Link Ready</div><div class="val">${demoLinkReady}</div></div>
-    <div class="kpi"><div class="lbl">Emails Ready</div><div class="val">${emailsReady}</div></div>
   `;
 
   const stageCounts = LISTS.stage.map(s=>cal.filter(r=>r.stage===s).length);
