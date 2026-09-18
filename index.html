@@ -952,6 +952,12 @@ async function boot(){
     reportError('Failed to load data: ' + (e.message||e));
   }
 
+  try{
+    backfillScheduleStickersFromCalendar();
+  } catch(e){
+    console.warn('Could not backfill Release Schedule stickers from Release Calendar:', e);
+  }
+
   try{ renderAll(); } catch(e){ reportError('Failed to render the tracker: ' + (e.message||e)); }
 
   if(ONLINE_MODE){
@@ -1755,6 +1761,78 @@ function applyBoolBadge(selectEl, value){
   else if(value===false){ selectEl.style.background='var(--red-bg)'; selectEl.style.color='var(--red-fg)'; selectEl.style.fontWeight='700'; }
 }
 
+/* Keeps the Release Schedule board in sync with a game's Planned Global
+   Launch date from the Release Calendar. As soon as that date is set (or
+   changed), this either creates a new sticker in the matching month or,
+   if a sticker for this game already exists (matched by game name), moves
+   it to the right month/date instead of creating a duplicate. Matching is
+   by name rather than a stored link so it works without any extra
+   Supabase column — rename the game in both places if you ever need to
+   re-link them. */
+function syncScheduleStickerForGame(row, opts){
+  opts = opts || {};
+  const gameName = (row && row.game_name || '').trim();
+  if(!gameName) return;
+  const dateVal = (row && row.planned_global_launch || '').trim();
+  const tickets = state.schedule_tickets || [];
+  const existing = tickets.find(t => (t.game_name||'').trim().toLowerCase() === gameName.toLowerCase());
+
+  /* Global Launch date was cleared on the calendar — clear the sticker's
+     date too, but keep the sticker (and its month/notes) in place rather
+     than deleting it. */
+  if(!dateVal){
+    if(existing && (existing.release_date||'').trim()){
+      existing.release_date = null;
+      persistLocal('schedule_tickets');
+      if(!opts.silent) renderSchedule();
+      if(ONLINE_MODE){
+        supa.from('schedule_tickets').update({release_date: null}).eq('id', existing.id)
+          .then(({error})=>{ if(error) console.warn('Could not clear schedule sticker date', error); });
+      }
+    }
+    return;
+  }
+
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return;
+  const d = new Date(dateVal+'T00:00:00');
+  if(isNaN(d)) return;
+  const month = MONTHS[d.getMonth()];
+
+  /* Calendar always wins: if the sticker's date/month has drifted from the
+     calendar (whether from a manual edit or nothing set yet), this brings
+     it back in line rather than leaving the manual edit in place. */
+  if(existing){
+    if(existing.release_date === dateVal && existing.month === month) return;
+    existing.release_date = dateVal;
+    existing.month = month;
+    persistLocal('schedule_tickets');
+    if(!opts.silent) renderSchedule();
+    if(ONLINE_MODE){
+      supa.from('schedule_tickets').update({release_date: dateVal, month}).eq('id', existing.id)
+        .then(({error})=>{ if(error) console.warn('Could not sync schedule sticker', error); });
+    }
+  } else {
+    const blank = { id: crypto.randomUUID(), month, game_name: gameName, release_date: dateVal, notes: '', notes_html: '', width: null, height: null };
+    state.schedule_tickets.push(blank);
+    persistLocal('schedule_tickets');
+    if(!opts.silent) renderSchedule();
+    if(ONLINE_MODE){
+      supa.from('schedule_tickets').insert(blank).then(({error})=>{ if(error) console.warn('Could not auto-create schedule sticker', error); });
+    }
+  }
+}
+
+/* One-time (and safe to re-run) backfill: walks every game currently in
+   the Release Calendar and makes sure each one with a Global Launch date
+   has a matching Release Schedule sticker, creating any that are missing.
+   Runs automatically at boot so existing games get their stickers without
+   needing to re-save each row by hand; idempotent, so it's harmless to run
+   again on every page load. */
+function backfillScheduleStickersFromCalendar(){
+  (state.release_calendar || []).forEach(row => syncScheduleStickerForGame(row, {silent:true}));
+  renderSchedule();
+}
+
 async function commit(table, row, sourceView){
   persistLocal(table);
   renderDashboard();
@@ -1764,6 +1842,9 @@ async function commit(table, row, sourceView){
     /* Game names may have changed — refresh the Pre-Release Tracker's
        Game dropdown so it stays in sync with Release Calendar. */
     renderTable('pre_release');
+    /* Auto-create/update the matching Release Schedule sticker whenever
+       the Planned Global Launch date (or the game name) changes. */
+    syncScheduleStickerForGame(row);
   }
   if(table==='schedule_tickets'){
     /* Ticket edits (name/month/notes) are saved directly via saveTicketField
@@ -1866,6 +1947,7 @@ function handleRealtime(table, payload){
   if(table==='release_calendar'){
     renderGTM();
     renderTable('pre_release');
+    if(payload.eventType!=='DELETE') syncScheduleStickerForGame(payload.new);
   }
 }
 
