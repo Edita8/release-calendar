@@ -271,9 +271,8 @@
   .schedule-month-detail-head h3{margin:0;font-size:19px;color:var(--navy);}
   .schedule-month-detail-head-right{display:flex;align-items:center;gap:12px;}
   .schedule-month-detail-count{font-size:12.5px;color:var(--muted);font-weight:600;}
-  .schedule-flat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;align-items:start;}
+  .schedule-flat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:start;}
   .schedule-flat-grid .ticket{margin-bottom:0;}
-  @media (max-width:1500px){ .schedule-flat-grid{grid-template-columns:repeat(5,1fr);} }
   @media (max-width:1250px){ .schedule-flat-grid{grid-template-columns:repeat(4,1fr);} }
   @media (max-width:1000px){ .schedule-flat-grid{grid-template-columns:repeat(3,1fr);} }
   @media (max-width:750px){ .schedule-flat-grid{grid-template-columns:repeat(2,1fr);} }
@@ -292,6 +291,14 @@
     color:var(--text);
   }
   .sched-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;flex-shrink:0;}
+  .sched-card-head-actions{display:flex;align-items:center;gap:8px;}
+  .sched-card-title-input{
+    width:100%; border:1px solid transparent; background:transparent; outline:none;
+    font-weight:800; font-size:16px; color:var(--navy); font-family:inherit;
+    padding:2px 0; margin-bottom:8px;
+  }
+  .sched-card-title-input::placeholder{ color:var(--muted); font-weight:600; }
+  .sched-card-title-input:hover, .sched-card-title-input:focus{ border-bottom-color:var(--border); }
   .sched-card-icon{font-size:20px;line-height:1;}
   .sched-card-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;}
   .sched-card-badge.scheduled{background:var(--green-bg);color:var(--green-fg);}
@@ -355,15 +362,15 @@
   .sticky-note-date{
     font-size:10.5px; font-weight:700; padding:0 8px 3px; opacity:.8; flex-shrink:0;
   }
-  .sticky-note-header .note-del{
+  .sticky-note-header .note-del, .note-del{
     background:transparent; border:none; cursor:pointer;
     color:inherit; opacity:.45; font-size:13px; padding:2px 3px; line-height:1;
   }
-  .sticky-note-header .note-del:hover{ opacity:.85; }
+  .sticky-note-header .note-del:hover, .note-del:hover{ opacity:.85; }
 
   /* Small color-swatch button in the title bar that opens a popover of
      pastel color dots to click (like choosing a sticky-note color). */
-  .sticky-note-header .note-color-btn{
+  .sticky-note-header .note-color-btn, .note-color-btn{
     width:14px; height:14px; border-radius:50%; border:1px solid rgba(0,0,0,.25);
     cursor:pointer; flex-shrink:0; padding:0;
   }
@@ -2315,85 +2322,21 @@ function renderScheduleTicket(t){
     return wrap;
   }
 
-  /* --- Edit mode: same compact card shell, with an icon row up top and
-     the existing editable title/date/month/color/delete controls and
-     rich-text notes area underneath. --- */
-  const iconRow = document.createElement('div');
-  iconRow.className = 'sched-card-head';
-  iconRow.innerHTML = `<span class="sched-card-icon">🎮</span>`;
-  note.appendChild(iconRow);
+  /* --- Edit mode: same compact card shell, with an icon + color + delete
+     row up top, an editable title underneath, and the rich-text notes
+     area below that. Date and month are no longer edited here — they're
+     kept in sync automatically from the game's Global Launch date on the
+     Release Calendar (see syncScheduleStickerForGame). --- */
+  const head = document.createElement('div');
+  head.className = 'sched-card-head';
 
-  const header = document.createElement('div');
-  header.className = 'sticky-note-header';
+  const iconSpan = document.createElement('span');
+  iconSpan.className = 'sched-card-icon';
+  iconSpan.textContent = '🎮';
+  head.appendChild(iconSpan);
 
-  const titleRow = document.createElement('div');
-  titleRow.className = 'sticky-note-title-row';
-
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.placeholder = 'Game name';
-  nameInput.value = t.game_name || '';
-  nameInput.addEventListener('blur', ()=>{
-    t.game_name = nameInput.value || null;
-    commit('schedule_tickets', t, 'schedule');
-  });
-  titleRow.appendChild(nameInput);
-
-  const delBtn = document.createElement('button');
-  delBtn.className = 'note-del';
-  delBtn.textContent = '✕';
-  delBtn.title = 'Delete this note';
-  delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
-  titleRow.appendChild(delBtn);
-
-  header.appendChild(titleRow);
-
-  const metaRow = document.createElement('div');
-  metaRow.className = 'sticky-note-meta-row';
-
-  const monthSelect = document.createElement('select');
-  MONTHS.forEach(m=>{
-    const o = document.createElement('option'); o.value=m; o.textContent=m;
-    if(m===t.month) o.selected = true;
-    monthSelect.appendChild(o);
-  });
-
-  const dateInput = document.createElement('input');
-  dateInput.type = 'date';
-  dateInput.className = 'sticky-note-date-input';
-  dateInput.title = 'Release date';
-  dateInput.value = t.release_date || '';
-  dateInput.addEventListener('change', ()=>{
-    t.release_date = dateInput.value || null;
-    if(t.release_date){
-      const d = new Date(t.release_date+'T00:00:00');
-      if(!isNaN(d)){
-        t.month = MONTHS[d.getMonth()];
-        monthSelect.value = t.month;
-      }
-    }
-    commit('schedule_tickets', t, 'schedule');
-    renderSchedule();
-  });
-  metaRow.appendChild(dateInput);
-
-  monthSelect.addEventListener('change', ()=>{
-    t.month = monthSelect.value;
-    commit('schedule_tickets', t, 'schedule');
-    renderSchedule();
-  });
-  metaRow.appendChild(monthSelect);
-
-  if((t.release_date||'').trim()){
-    const d = new Date(t.release_date+'T00:00:00');
-    if(!isNaN(d) && MONTHS[d.getMonth()] !== t.month){
-      const warn = document.createElement('span');
-      warn.className = 'sticky-note-mismatch';
-      warn.textContent = '⚠';
-      warn.title = 'Release date doesn\'t fall in the selected month';
-      metaRow.appendChild(warn);
-    }
-  }
+  const headActions = document.createElement('div');
+  headActions.className = 'sched-card-head-actions';
 
   const colorBtn = document.createElement('button');
   colorBtn.type = 'button';
@@ -2430,10 +2373,28 @@ function renderScheduleTicket(t){
     };
     setTimeout(()=>document.addEventListener('click', closeOnOutsideClick), 0);
   };
-  metaRow.appendChild(colorBtn);
+  headActions.appendChild(colorBtn);
 
-  header.appendChild(metaRow);
-  note.appendChild(header);
+  const delBtn = document.createElement('button');
+  delBtn.className = 'note-del';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Delete this note';
+  delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
+  headActions.appendChild(delBtn);
+
+  head.appendChild(headActions);
+  note.appendChild(head);
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.className = 'sched-card-title-input';
+  nameInput.placeholder = 'Game name';
+  nameInput.value = t.game_name || '';
+  nameInput.addEventListener('blur', ()=>{
+    t.game_name = nameInput.value || null;
+    commit('schedule_tickets', t, 'schedule');
+  });
+  note.appendChild(nameInput);
 
   /* --- Notes: rich-text area with a small formatting toolbar --- */
   const notesEl = document.createElement('div');
