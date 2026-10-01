@@ -2610,5 +2610,272 @@ function drawChart(canvasId, type, labels, data, color, palette){
   });
 }
 </script>
+<!-- RELEASE-CALENDAR-MONTHLY:START -->
+<style>
+  /* ---------- Release Calendar: monthly layout ---------- */
+  #table-release_calendar{ background:#fff; }
+  #table-release_calendar thead th{
+    text-transform:none; letter-spacing:0; font-size:11.5px; font-weight:700; padding:11px 10px;
+  }
+
+  /* data rows: soft lavender banding by row (not by column) */
+  #table-release_calendar tbody tr.cal-row td{
+    background:#F7F5FC; border-bottom:1px solid var(--border); padding:5px 8px;
+  }
+  #table-release_calendar tbody tr.cal-row.alt td{ background:#EFECFB; }
+  #table-release_calendar tbody tr.cal-row:hover td{ background:var(--navy-pale); }
+
+  #table-release_calendar td[data-col="game_name"] input,
+  #table-release_calendar td[data-col="game_name"] .ro-field{ font-weight:600; color:var(--navy); }
+  #table-release_calendar td[data-col="product_type"] .ro-field{
+    display:inline-block; background:#fff; border:1px solid var(--border); border-radius:5px; padding:2px 9px; min-height:0;
+  }
+  #table-release_calendar td[data-col="product_type"] select{
+    background:#fff; border:1px solid var(--border); border-radius:5px;
+  }
+  #table-release_calendar td[data-col="planned_global_launch"] input,
+  #table-release_calendar td[data-col="planned_global_launch"] .ro-field{ font-weight:700; }
+  #table-release_calendar td[data-col="demo_link"] a{ text-decoration:underline; color:var(--navy); }
+
+  /* bold month line */
+  #table-release_calendar tbody tr.cal-month-row td{
+    background:#fff; border-top:4px solid var(--navy); border-bottom:1px solid var(--border);
+    padding:16px 12px 8px; overflow:visible; white-space:nowrap;
+  }
+  #table-release_calendar tbody tr.cal-month-row:hover td{ background:#fff; }
+  .cal-month-name{ font-size:17px; font-weight:800; color:var(--navy); }
+  .cal-month-count{ font-size:12px; font-weight:600; color:var(--muted); margin-left:12px; }
+
+  /* thinner amber line for promo tools inside a month */
+  #table-release_calendar tbody tr.cal-promo-row td{
+    background:#fff; border-top:2px solid #E9A23B; border-bottom:1px solid var(--border);
+    padding:9px 12px 6px; overflow:visible; white-space:nowrap;
+  }
+  #table-release_calendar tbody tr.cal-promo-row:hover td{ background:#fff; }
+  .cal-promo-name{ font-size:12.5px; font-weight:800; color:var(--yellow-fg); }
+
+  #table-release_calendar tbody tr.cal-none-row td{
+    background:#fff; color:var(--muted); font-style:italic; padding:9px 12px; overflow:visible;
+  }
+  #table-release_calendar tbody tr.cal-none-row:hover td{ background:#fff; }
+  .cal-div-inner{ position:sticky; left:12px; width:max-content; }
+  .cal-note{ font-size:11.5px; color:var(--muted); margin-top:12px; }
+</style>
+
+<script>
+(function(){
+  var ISO = /^\d{4}-\d{2}-\d{2}$/;
+  var QM  = { Q1:[0,1,2], Q2:[3,4,5], Q3:[6,7,8], Q4:[9,10,11] };
+  var MN  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var sigCache = {};
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+  function isPromo(r){ return (r.product_type||'').trim() === 'Promo Tool'; }
+  function plural(n, w){ return n + ' ' + w + (n === 1 ? '' : 's'); }
+
+  /* Month rule: Global Launch date -> else Planned Production date ->
+     else the first month of the game's quarter. */
+  function effDate(r){
+    var l = (r.planned_global_launch||'').trim(), p = (r.planned_production_date||'').trim();
+    if(ISO.test(l)) return l;
+    if(ISO.test(p)) return p;
+    return '';
+  }
+  function fallbackYear(){
+    var cur = new Date().getFullYear(), ys = {};
+    (state.release_calendar||[]).forEach(function(r){ var d = effDate(r); if(d) ys[+d.slice(0,4)] = 1; });
+    var arr = Object.keys(ys).map(Number);
+    if(!arr.length || ys[cur]) return cur;
+    return Math.max.apply(null, arr);
+  }
+  function monthKey(r, fy){
+    var d = effDate(r);
+    if(d) return d.slice(0,7);
+    var q = QM[r.quarter];
+    return q ? (fy + '-' + pad(q[0]+1)) : 'none';
+  }
+  function sigOf(r, fy){ return monthKey(r, fy) + '|' + (isPromo(r) ? 'p' : 'g'); }
+
+  function dividerRow(cls, innerHtml, colspan){
+    var tr = document.createElement('tr'); tr.className = cls;
+    var td = document.createElement('td'); td.colSpan = colspan;
+    td.innerHTML = '<div class="cal-div-inner">' + innerHtml + '</div>';
+    tr.appendChild(td);
+    return tr;
+  }
+
+  /* Give each data row the lavender-banded look and tag its cells by column. */
+  function decorateRow(tr, cols, alt){
+    tr.classList.add('cal-row');
+    if(alt) tr.classList.add('alt');
+    var tds = Array.prototype.slice.call(tr.children), offset = 0;
+    if(EDIT_MODE){ /* row-drag handle is not used in the monthly layout */
+      var drag = tds[0];
+      if(drag){ drag.textContent = ''; drag.style.cursor = 'default'; drag.style.backgroundColor = ''; }
+      offset = 1;
+    }
+    cols.forEach(function(c, i){
+      var td = tds[i + offset];
+      if(!td) return;
+      td.dataset.col = c.key;
+      td.style.backgroundColor = '';
+      td.style.borderRight = '';
+    });
+  }
+
+  /* Read-only dates shown as dd.mm.yyyy. */
+  var origRO = window.makeReadOnlyField;
+  window.makeReadOnlyField = function(row, col){
+    var el = origRO.apply(this, arguments);
+    if(col && col.type === 'date'){
+      var v = (row[col.key] || '').toString().trim();
+      el.textContent = ISO.test(v) ? (v.slice(8,10) + '.' + v.slice(5,7) + '.' + v.slice(0,4)) : (v || 'dd.mm.yyyy');
+    }
+    return el;
+  };
+
+  /* Rows are grouped by month, so drag-reordering no longer applies. */
+  window.calendarDragEnabled = function(){ return false; };
+  window.updateCalendarDragHint = function(){
+    var hint = document.getElementById('calendarDragHint');
+    if(hint) hint.textContent = '';
+  };
+
+  window.renderCalendarTable = function(){
+    var table = 'release_calendar';
+    var cfg = TABLES[table];
+    var headRow = document.getElementById('head-' + table);
+    var text = (calendarFilters.text || '').toLowerCase();
+
+    buildCalendarColgroup(cfg);
+    var cols = cfg.columns.filter(function(c){ return !c.hideInCalendar; });
+
+    var leadTh  = EDIT_MODE ? '<th style="width:26px" data-frozen-key="__drag"></th>' : '';
+    var trailTh = EDIT_MODE ? '<th style="width:40px"></th>' : '';
+
+    headRow.innerHTML = leadTh + cols.map(function(c){
+      var sortable = CALENDAR_SORTABLE_KEYS.indexOf(c.key) !== -1;
+      var arrow = '';
+      if(sortable && calendarSort.key === c.key) arrow = '<span class="sort-arrow">' + (calendarSort.dir === 'asc' ? '▲' : '▼') + '</span>';
+      var isFrozen = CALENDAR_FROZEN_KEYS.indexOf(c.key) !== -1;
+      var isLastFrozen = isFrozen && CALENDAR_FROZEN_KEYS[CALENDAR_FROZEN_KEYS.length-1] === c.key;
+      var frozenAttr = isFrozen ? ' data-frozen-key="' + c.key + '"' : '';
+      var lastAttr = isLastFrozen ? ' data-frozen-last' : '';
+      return '<th class="' + (sortable ? 'sortable' : '') + '" data-key="' + c.key + '"' + frozenAttr + lastAttr +
+             ' style="border-right:1px solid rgba(255,255,255,.25)">' + c.label + arrow +
+             '<span class="col-resize-handle" data-key="' + c.key + '"></span></th>';
+    }).join('') + trailTh;
+
+    headRow.querySelectorAll('th.sortable').forEach(function(th){
+      th.addEventListener('click', function(){
+        var key = th.dataset.key;
+        if(calendarSort.key === key){ calendarSort.dir = calendarSort.dir === 'asc' ? 'desc' : 'asc'; }
+        else { calendarSort.key = key; calendarSort.dir = 'asc'; }
+        renderCalendarTable();
+      });
+    });
+    headRow.querySelectorAll('.col-resize-handle').forEach(function(handle){
+      handle.addEventListener('mousedown', function(e){ e.preventDefault(); e.stopPropagation(); startColResize(e, handle.dataset.key); });
+      handle.addEventListener('click', function(e){ e.stopPropagation(); });
+    });
+
+    var body = document.getElementById('body-' + table);
+    body.innerHTML = '';
+
+    var fy = fallbackYear();
+    (state[table] || []).forEach(function(r){ sigCache[r.id] = sigOf(r, fy); });
+
+    var rows = (state[table] || []).filter(function(row){
+      if(text){
+        var hay = cfg.columns.map(function(c){ return String(row[c.key] || ''); }).join(' ').toLowerCase();
+        if(hay.indexOf(text) === -1) return false;
+      }
+      if(calendarFilters.quarter !== 'All' && row.quarter !== calendarFilters.quarter) return false;
+      if(calendarFilters.stage !== 'All' && row.stage !== calendarFilters.stage) return false;
+      if(calendarFilters.product_type !== 'All' && row.product_type !== calendarFilters.product_type) return false;
+      return true;
+    });
+
+    if(calendarSort.key){
+      rows = sortCalendarRows(rows);
+    } else {
+      rows = rows.slice().sort(function(a, b){
+        var da = effDate(a), db = effDate(b);
+        if(da !== db) return da === '' ? 1 : db === '' ? -1 : (da < db ? -1 : 1);
+        return (a.sort_order || 0) - (b.sort_order || 0);
+      });
+    }
+
+    /* Bucket rows by month; games and promo tools kept apart. */
+    var groups = {};
+    function ensure(k){ return groups[k] || (groups[k] = { games:[], promos:[] }); }
+
+    if(!text){ /* show empty months too, so gaps are visible */
+      var years = {}; years[fy] = 1;
+      rows.forEach(function(r){ var k = monthKey(r, fy); if(k !== 'none') years[+k.slice(0,4)] = 1; });
+      var months = calendarFilters.quarter === 'All' ? [0,1,2,3,4,5,6,7,8,9,10,11] : (QM[calendarFilters.quarter] || []);
+      Object.keys(years).forEach(function(y){ months.forEach(function(m){ ensure(y + '-' + pad(m+1)); }); });
+    }
+    rows.forEach(function(r){ ensure(monthKey(r, fy))[isPromo(r) ? 'promos' : 'games'].push(r); });
+
+    var keys = Object.keys(groups).sort(function(a, b){
+      return a === 'none' ? 1 : b === 'none' ? -1 : (a < b ? -1 : a > b ? 1 : 0);
+    });
+
+    var colspan = cols.length + (EDIT_MODE ? 2 : 0);
+    var n = 0;
+    function addRow(r){
+      var tr = renderCalendarRow(cfg, r, false);
+      decorateRow(tr, cols, n++ % 2 === 1);
+      body.appendChild(tr);
+    }
+
+    keys.forEach(function(k){
+      var g = groups[k];
+      var label = k === 'none' ? 'Unassigned (no quarter or date)' : MN[+k.slice(5) - 1] + ' ' + k.slice(0,4);
+      body.appendChild(dividerRow('cal-month-row',
+        '<span class="cal-month-name">' + escapeHtml(label) + '</span>' +
+        '<span class="cal-month-count">' + plural(g.games.length, 'game') + ' · ' + plural(g.promos.length, 'promo tool') + '</span>',
+        colspan));
+
+      if(!g.games.length && !g.promos.length){
+        body.appendChild(dividerRow('cal-none-row', 'No releases', colspan));
+      }
+      g.games.forEach(addRow);
+      if(g.promos.length){
+        body.appendChild(dividerRow('cal-promo-row',
+          '<span class="cal-promo-name">Promo tools (' + g.promos.length + ')</span>', colspan));
+        g.promos.forEach(addRow);
+      }
+    });
+
+    updateCalendarDragHint();
+    applyFrozenOffsets();
+  };
+
+  /* When a date, quarter or product type is edited inside the table, move the
+     row to its new month straight away (the original code skips that re-render). */
+  var origCommit = window.commit;
+  window.commit = function(table, row, sourceView){
+    var p = origCommit.apply(this, arguments);
+    if(table === 'release_calendar' && sourceView === 'table' && row && sigCache[row.id] !== undefined){
+      if(sigOf(row, fallbackYear()) !== sigCache[row.id]) window.renderCalendarTable();
+    }
+    return p;
+  };
+
+  /* Tab description + footnote. */
+  var desc = document.querySelector('#panel-calendar .panel-head p');
+  if(desc) desc.textContent = 'All game releases grouped by month, with promo tools on their own line in each month. Click a column header to sort; drag column edges to resize. Quarter, Game Name, and Stage stay pinned while you scroll right.';
+  var wrap = document.getElementById('calendarTableWrap');
+  if(wrap && !document.getElementById('calNote')){
+    var note = document.createElement('div');
+    note.id = 'calNote'; note.className = 'cal-note';
+    note.textContent = 'Months follow the Global Launch date. With no launch date the Planned Production date is used; with neither, the game stays in the first month of its quarter.';
+    wrap.parentNode.insertBefore(note, wrap.nextSibling);
+  }
+})();
+</script>
+<!-- RELEASE-CALENDAR-MONTHLY:END -->
 </body>
 </html>
