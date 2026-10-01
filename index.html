@@ -96,7 +96,7 @@
 </div>
 
 <div class="filters">
-  <select id="fq"><option>Q2</option><option>All quarters</option></select>
+  <select id="fq"><option>All quarters</option><option>Q1</option><option selected>Q2</option><option>Q3</option><option>Q4</option></select>
   <select id="fs"><option>All Stages</option><option>Production</option></select>
   <select id="ft"><option>All Product Types</option></select>
   
@@ -161,7 +161,7 @@ function render(){
      &&(!term||Object.values(g).join(' ').toLowerCase().includes(term)));
   const buckets={};
   const ensure=k=>buckets[k]??={games:[],promos:[]};
-  if(fq!=='All quarters') QMONTHS[fq].forEach(m=>ensure(2026+'-'+String(m+1).padStart(2,'0')));
+  (fq==='All quarters'?[0,1,2,3,4,5,6,7,8,9,10,11]:QMONTHS[fq]).forEach(m=>ensure(2026+'-'+String(m+1).padStart(2,'0')));
   items.forEach(g=>{const d=dateOf(g);const k=d?monthKey(d):(2026+'-'+String(QMONTHS[g.q][0]+1).padStart(2,'0'));(isPromo(g)?ensure(k).promos:ensure(k).games).push(g)});
   const keys=Object.keys(buckets).sort((a,b)=>a==='none'?1:b==='none'?-1:a.localeCompare(b));
   const sortFn=(a,b)=>(dateOf(a)||0)-(dateOf(b)||0);
