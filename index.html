@@ -1,188 +1,2614 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Release Calendar – Monthly view</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Galaxsys Game Release Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
   :root{
-    --ink:#241a5e; --ink-2:#4a3f8f; --muted:#7a74a8;
-    --head:#2a1f6b; --lav:#efecfb; --lav-2:#f7f5fe; --line:#ddd8f2;
-    --green:#cfe8b0; --green-ink:#2f5a12; --promo:#e9a23b; --promo-bg:#fff4e0; --promo-ink:#7a4a05;
-    --red:#b3173b;
+    --navy:#2E2069; --navy-light:#7C6FEE; --navy-pale:#F0ECFC;
+    --text:#231C3D; --muted:#7A7391; --border:#E5E1F5; --bg:#F3F1FB;
+    --green-bg:#C6E0B4; --green-fg:#375623;
+    --yellow-bg:#FFF2CC; --yellow-fg:#806000;
+    --red-bg:#F8CBAD; --red-fg:#833C00;
+    --purple-bg:#E4D9F0; --purple-fg:#4C2F72;
+    --gray-bg:#E7E6E6; --gray-fg:#404040;
+    --blue-bg:#BDD7EE; --blue-fg:#1F4E78;
+    --col-band-light:#F7F5FC; --col-band-dark:#ECE8F9; --col-sep:#DBD5F0;
+    --header-dark:#180F3D; --header-mid:#2E1F66;
   }
-  *{box-sizing:border-box}
-  body{margin:0;background:#fbfaff;color:var(--ink);font:13px/1.4 "Segoe UI",system-ui,sans-serif;padding:24px 28px 60px}
-  h1{margin:0;font-size:22px}
-  .sub{color:var(--muted);font-size:12px;margin:2px 0 14px}
-  .top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;flex-wrap:wrap}
-  .btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  input,select,button{font:inherit;color:var(--ink)}
-  input[type=search],select{border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 9px}
-  button{border:1.5px solid var(--head);background:#fff;border-radius:6px;padding:6px 12px;font-weight:600;cursor:pointer}
-  button.primary{background:var(--head);color:#fff}
-  .filters{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 18px;align-items:center}
-  .seg{display:inline-flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#fff}
-  .seg button{border:0;border-radius:0;font-weight:500;padding:6px 11px;background:transparent}
-  .seg button.on{background:var(--head);color:#fff}
-  .lbl{color:var(--muted);font-size:12px}
+  *{box-sizing:border-box;}
+  html{height:100%;}
+  body{margin:0;min-height:100%;font-family:'Segoe UI',Aptos,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  .hidden{display:none !important;}
+  body.mode-view .editor-only{display:none !important;}
 
-  /* month overview strip */
-  .strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:26px;position:sticky;top:0;z-index:5;background:#fbfaff;padding:8px 0}
-  .tile{background:#fff;border:1px solid var(--line);border-radius:8px;padding:10px 14px;cursor:pointer;text-align:left;font-weight:400;display:block;width:100%}
-  .tile:hover{border-color:var(--ink-2)}
-  .tile.empty{background:transparent;border-style:dashed;color:var(--muted)}
-  .tile .m{font-weight:700;font-size:13px}
-  .tile .n{font-size:30px;font-weight:700;line-height:1.1;margin-top:2px}
-  .tile .n small{font-size:12px;font-weight:500;color:var(--muted);margin-left:4px}
-  .tile .p{font-size:12px;color:var(--promo-ink);margin-top:2px}
-  .tile.empty .p{color:var(--muted)}
-  .tile.total{background:var(--head);border-color:var(--head);color:#fff}
-  .tile.total .n small,.tile.total .p{color:#cfc9f5}
+  #errorBanner{position:fixed;top:0;left:0;right:0;background:#B00020;color:#fff;padding:10px 20px;font-size:12.5px;font-weight:600;z-index:2000;text-align:center;}
+  #errorBanner button{margin-left:14px;background:rgba(255,255,255,.2);border:none;color:#fff;padding:3px 10px;border-radius:4px;cursor:pointer;font-weight:600;}
 
-  /* month section */
-  .month{margin-bottom:34px;scroll-margin-top:110px}
-  .mhead{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--head);padding-bottom:6px;margin-bottom:12px;flex-wrap:wrap}
-  .mhead h2{margin:0;font-size:20px}
-  .chip{display:inline-block;border-radius:99px;padding:2px 10px;font-weight:600;font-size:12px;background:var(--lav);color:var(--ink-2)}
-  .chip.promo{background:var(--promo-bg);color:var(--promo-ink)}
-  .mhead .q{margin-left:auto;color:var(--muted);font-size:12px}
-  .group{margin-bottom:14px}
-  .gtitle{display:flex;align-items:center;gap:8px;font-weight:700;margin:0 0 6px;font-size:13px}
-  .gtitle .dot{width:9px;height:9px;border-radius:2px;background:var(--head)}
-  .group.promo .gtitle .dot{background:var(--promo)}
-  .none{color:var(--muted);font-style:italic;padding:8px 2px}
+  #pinGate{position:fixed;inset:0;background:linear-gradient(135deg,var(--header-dark),var(--header-mid) 60%,var(--navy-light));display:flex;align-items:center;justify-content:center;z-index:1000;}
+  .pin-box{background:#fff;padding:40px 36px;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,0.3);width:340px;text-align:center;}
+  .pin-box h1{font-size:20px;margin:0 0 4px;color:var(--navy);}
+  .pin-box p{font-size:13px;color:var(--muted);margin:0 0 20px;}
+  .pin-box input{width:100%;font-size:22px;letter-spacing:8px;text-align:center;padding:12px;border:1px solid var(--border);border-radius:8px;margin-bottom:14px;}
+  .pin-box button{width:100%;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+  .pin-box button:hover{background:var(--navy-light);}
+  .pin-box button:disabled{opacity:.6;cursor:default;}
+  .pin-error{color:#B00020;font-size:13px;height:16px;margin-bottom:8px;}
+  .pin-hint{font-size:11px;color:var(--muted);margin-top:16px;line-height:1.5;}
 
-  .wrap{overflow-x:auto;border-radius:8px;border:1px solid var(--line);background:#fff}
-  table{border-collapse:collapse;width:100%;min-width:1300px}
-  thead th{background:var(--head);color:#fff;text-align:left;font-size:11px;letter-spacing:.02em;padding:9px 10px;white-space:nowrap}
-  .group.promo thead th{background:#6b4310}
-  tbody td{padding:9px 10px;border-top:1px solid var(--line);white-space:nowrap;background:var(--lav-2)}
-  tbody tr:nth-child(even) td{background:var(--lav)}
-  td.name{font-weight:600}
-  td.date.launch{font-weight:700}
-  td.empty{color:#b9b4d9}
-  .pill{background:var(--green);color:var(--green-ink);border-radius:99px;padding:3px 12px;font-weight:600}
-  .type{display:inline-block;padding:1px 8px;border-radius:4px;background:#fff;border:1px solid var(--line)}
-  a{color:var(--ink-2)}
-  td.name,th.name{position:sticky;left:0;z-index:1;box-shadow:1px 0 0 var(--line)}
-  thead th.name{background:var(--head)}
-  .group.promo thead th.name{background:#6b4310}
-  tbody td.name{background:inherit}
-  tbody tr td.name{background:var(--lav-2)}
-  tbody tr:nth-child(even) td.name{background:var(--lav)}
-  .note{font-size:11px;color:var(--muted);margin-top:30px}
+  header{background:linear-gradient(120deg,var(--header-dark),var(--header-mid) 70%);color:#fff;padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+  header h1{font-size:18px;margin:0;font-weight:700;}
+  header .sub{font-size:11px;color:#c6bdf0;font-weight:400;}
+  .header-right{display:flex;align-items:center;gap:14px;}
+  .header-logo{display:flex;align-items:center;gap:8px;padding-left:14px;margin-left:2px;border-left:1px solid rgba(255,255,255,0.18);}
+  .header-logo .mark{font-size:16px;color:#9C8CFF;}
+  .header-logo .word{font-size:15px;font-weight:800;letter-spacing:1.5px;color:#fff;}
+  .badge-pill{font-size:11px;padding:4px 10px;border-radius:20px;font-weight:600;}
+  .sync-online{background:#375623;color:#C6E0B4;}
+  .sync-local{background:#833C00;color:#F8CBAD;}
+  .mode-editor-badge{background:#4C2F72;color:#E4D9F0;}
+  .mode-viewer-badge{background:#1F4E78;color:#BDD7EE;}
+  .lockBtn{background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 12px;border-radius:6px;font-size:11.5px;cursor:pointer;}
+  .lockBtn:hover{background:rgba(255,255,255,0.22);}
+  nav{display:flex;gap:4px;background:var(--header-dark);padding:0 24px;overflow-x:auto;}
+  nav button{background:none;border:none;color:#bcb0e6;padding:13px 16px;font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+  nav button.active{color:#fff;border-bottom-color:#9C8CFF;}
+  nav button:hover{color:#fff;}
+  main{padding:24px 32px 60px;width:100%;max-width:none;margin:0;}
+  .panel{display:none;}
+  .panel.active{display:block;}
+  .panel-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .panel-head h2{margin:0;color:var(--navy);font-size:20px;}
+  .panel-head p{margin:2px 0 0;color:var(--muted);font-size:12.5px;}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .btn{background:var(--navy);color:#fff;border:none;padding:9px 16px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .btn:hover{background:var(--navy-light);}
+  .btn.secondary{background:#fff;color:var(--navy);border:1px solid var(--navy);}
+  .btn.danger{background:#fff;color:#B00020;border:1px solid #B00020;padding:5px 9px;}
+  .search{padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;min-width:200px;}
+  .chip{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);}
+  .chip.active{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .chiprow{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  label.checklabel{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:600;cursor:pointer;}
 
-  thead th{position:sticky;top:0;z-index:3}
-  tr.mrow td{background:#fff!important;border-top:4px solid var(--head);padding:14px 10px 8px;font-size:17px;font-weight:800}
-  tr.mrow td span.in{position:sticky;left:10px}
-  tr.mrow .cnt{font-size:12px;font-weight:600;color:var(--muted);margin-left:12px}
-  tr.prow td{background:#fff!important;border-top:2px solid var(--promo);padding:8px 10px 6px;font-weight:700;color:var(--promo-ink)}
-  tr.prow td span.in{position:sticky;left:10px}
-  tr.none td{background:#fff!important;color:var(--muted);font-style:italic}
+  .table-wrap{overflow-x:auto;background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:0 2px 10px rgba(46,32,105,0.05);}
+  table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  thead th{background:var(--navy);color:#fff;padding:10px 8px;text-align:left;position:sticky;top:0;white-space:nowrap;font-size:11.5px;text-transform:uppercase;letter-spacing:.3px;}
+
+  .freeze-wrap{max-height:68vh;overflow-y:auto;}
+  #table-release_calendar{table-layout:fixed;}
+  #table-release_calendar thead th{overflow:hidden;text-overflow:ellipsis;z-index:2;}
+  #table-release_calendar thead th.sortable{padding-right:16px;}
+  #table-release_calendar tbody td{overflow:hidden;text-overflow:ellipsis;}
+  .col-resize-handle{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:6;}
+  .col-resize-handle:hover, .col-resize-handle:active{background:rgba(255,255,255,0.35);}
+  tbody td{padding:4px 6px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tbody tr:nth-child(even){background:#FAFBFC;}
+  tbody tr:hover{background:var(--navy-pale);}
+  thead th.sortable{cursor:pointer;user-select:none;}
+  thead th.sortable:hover{background:var(--navy-light);}
+  thead th .sort-arrow{margin-left:4px;opacity:.85;font-size:10px;}
+  tbody tr.dragging{opacity:.35;}
+  tbody tr.drag-over-top{box-shadow: inset 0 3px 0 0 var(--navy-light);}
+  tbody tr.drag-over-bottom{box-shadow: inset 0 -3px 0 0 var(--navy-light);}
+  td.rowdrag{cursor:grab;text-align:center;color:var(--muted);width:22px;font-size:14px;letter-spacing:-2px;}
+  td.rowdrag:active{cursor:grabbing;}
+  .calendar-filterbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .calendar-filterbar select{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12.5px;background:#fff;color:var(--text);}
+  .drag-hint{font-size:11.5px;color:var(--muted);margin-bottom:8px;}
+
+  /* --- Pre-Release Tracker: per-game accordion groups --- */
+  .prerelease-group{background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;overflow:hidden;}
+  .prerelease-group-header{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;user-select:none;}
+  .prerelease-group-header:hover{background:var(--navy-pale);}
+  .prerelease-group-header .chev{font-size:11px;color:var(--muted);width:12px;text-align:center;flex-shrink:0;}
+  .prerelease-group-header .pg-name{font-weight:700;color:var(--navy);font-size:14px;flex:1;}
+  .prerelease-group-header .pg-count{font-size:11px;font-weight:700;color:var(--navy-light);background:var(--navy-pale);padding:2px 9px;border-radius:20px;}
+  .prerelease-group-body{padding:12px 16px 14px;background:#EFF8EA;border-top:1px solid var(--border);}
+  .prerelease-group-body .table-wrap{border:1px solid var(--border);}
+  .prerelease-add-btn{width:100%;margin-top:8px;background:none;border:1px dashed #9dc3e8;color:var(--navy-light);border-radius:8px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
+  .prerelease-add-btn:hover{background:var(--navy-pale);}
+
+  /* Two colored sub-sections inside each expanded game group: pre-release
+     partner rollouts (green) vs. the game's best/confirmed positions
+     (blue). Each gets its own header strip, table, and add button. */
+  .prerelease-section{margin-top:14px;}
+  .prerelease-section:first-child{margin-top:12px;}
+  .prerelease-section-head{display:flex;align-items:center;gap:8px;padding:6px 2px;margin-bottom:6px;}
+  .prerelease-section-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .prerelease-section-title{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.3px;}
+  .prerelease-section-count{font-size:11px;font-weight:700;padding:1px 8px;border-radius:20px;}
+  .prerelease-section-prerelease .prerelease-section-dot{background:var(--green-fg);}
+  .prerelease-section-prerelease .prerelease-section-title{color:var(--green-fg);}
+  .prerelease-section-prerelease .prerelease-section-count{background:var(--green-bg);color:var(--green-fg);}
+  .prerelease-section-prerelease .table-wrap{border:1px solid #B9DDA0;background:#F5FBF0;}
+  .prerelease-section-prerelease thead th{background:var(--green-fg);padding:6px 8px;}
+  .prerelease-add-btn-prerelease{border-color:#9dc78d;color:var(--green-fg);}
+  .prerelease-add-btn-prerelease:hover{background:#EAF7E1;}
+  .prerelease-section-best .prerelease-section-dot{background:var(--blue-fg);}
+  .prerelease-section-best .prerelease-section-title{color:var(--blue-fg);}
+  .prerelease-section-best .prerelease-section-count{background:var(--blue-bg);color:var(--blue-fg);}
+  .prerelease-section-best .table-wrap{border:1px solid #9dc3e8;background:#F1F8FD;}
+  .prerelease-section-best thead th{background:var(--blue-fg);padding:6px 8px;}
+  .prerelease-add-btn-best{border-color:#9dc3e8;color:var(--blue-fg);}
+  .prerelease-add-btn-best:hover{background:#E7F2FB;}
+  .prerelease-section .ticket-empty{padding:14px 0;}
+  td input, td select, td textarea{
+    width:100%;border:1px solid transparent;background:transparent;padding:6px 5px;font-size:12.5px;border-radius:4px;font-family:inherit;color:var(--text);
+  }
+  td input:hover, td select:hover, td textarea:hover{border-color:var(--border);}
+  td input:focus, td select:focus, td textarea:focus{border-color:var(--navy-light);background:#fff;outline:none;}
+  td textarea{resize:vertical;min-height:32px;}
+  .col-num input{text-align:right;}
+  .rowdel{text-align:center;}
+  .badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;}
+  .ro-field{padding:6px 5px;font-size:12.5px;min-height:16px;}
+  .ro-field a{color:var(--navy-light);}
+
+  /* --- Frozen (pinned) leading columns in the Release Calendar table --- */
+  #table-release_calendar td[data-frozen-key],
+  #table-release_calendar th[data-frozen-key]{
+    position:sticky;
+  }
+  #table-release_calendar td[data-frozen-key]{ z-index:1; }
+  #table-release_calendar th[data-frozen-key]{ z-index:3; }
+  #table-release_calendar [data-frozen-last]{
+    box-shadow: 2px 0 4px -2px rgba(0,0,0,0.25);
+  }
+
+  /* --- Muted empty date placeholders (Release Calendar + all tables) --- */
+  td input[type="date"].date-empty{ color:var(--muted); }
+  td input[type="date"].date-empty::-webkit-datetime-edit{ color:var(--muted); opacity:.6; }
+  .ro-field.date-empty{ color:var(--muted); }
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px;}
+  .kpi{background:#fff;border:1px solid var(--border);border-top:4px solid var(--navy-light);border-radius:12px;padding:16px;text-align:center;box-shadow:0 2px 10px rgba(46,32,105,0.06);}
+  .kpi .lbl{font-size:11.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+  .kpi .val{font-size:32px;font-weight:800;color:var(--navy);margin-top:6px;}
+  .dash-grid{display:grid;grid-template-columns:2fr 1fr;gap:16px;align-items:start;}
+  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;}
+  .chart-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(46,32,105,0.06);}
+  .chart-card h3{margin:0 0 10px;font-size:14px;color:var(--navy);}
+  .chart-card canvas{max-height:240px;}
+  .milestone-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px;box-shadow:0 2px 10px rgba(46,32,105,0.06);}
+  .milestone-card h3{margin:0 0 10px;font-size:14px;color:var(--navy);}
+  .milestone{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:12.5px;}
+  .milestone:last-child{border-bottom:none;}
+  .milestone .m-date{font-weight:700;color:var(--navy);min-width:66px;}
+  .milestone .m-game{flex:1;padding:0 8px;}
+  .milestone .m-type{font-size:10.5px;padding:3px 8px;border-radius:20px;background:var(--blue-bg);color:var(--blue-fg);font-weight:700;white-space:nowrap;}
+  .empty-note{color:var(--muted);font-size:12.5px;padding:10px 0;}
+
+  #gtmGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:16px;}
+  .gtm-card{background:#fff;border:1px solid var(--border);border-top:4px solid var(--navy-light);border-radius:12px;padding:18px;box-shadow:0 2px 10px rgba(46,32,105,0.06);}
+  .gtm-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .gtm-card-head h3{margin:0;font-size:15.5px;color:var(--navy);}
+  .gtm-meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .gtm-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .gtm-pct{text-align:right;}
+  .gtm-pct .num{font-size:22px;font-weight:800;color:var(--navy);}
+  .gtm-pct .txt{font-size:9.5px;color:var(--muted);text-transform:uppercase;font-weight:700;letter-spacing:.3px;}
+  .progress-bar{height:6px;background:#ECECEC;border-radius:4px;overflow:hidden;margin-top:14px;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,#6FA8DC,#375623);border-radius:4px;}
+
+  .stepper{display:flex;position:relative;margin:18px 0 6px;}
+  .stepper::before{content:'';position:absolute;top:15px;left:8%;right:8%;height:2px;background:#E1E4E8;z-index:0;}
+  .step{flex:1;text-align:center;position:relative;z-index:1;}
+  .step .dot{width:30px;height:30px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;border:2px solid #E1E4E8;background:#fff;}
+  .step.done .dot{background:var(--green-bg);border-color:var(--green-fg);color:var(--green-fg);}
+  .step.scheduled .dot{background:var(--blue-bg);border-color:var(--blue-fg);color:var(--blue-fg);}
+  .step.progress .dot{background:var(--yellow-bg);border-color:var(--yellow-fg);color:var(--yellow-fg);}
+  .step.blocked .dot{background:var(--red-bg);border-color:var(--red-fg);color:var(--red-fg);}
+  .step.na .dot{background:#fafafa;border-color:#eee;color:#ccc;}
+  .step.pending .dot{background:#fff;border-color:#ddd;color:#bbb;}
+  .step.late .dot{background:var(--red-bg);border-color:var(--red-fg);color:var(--red-fg);}
+  .step.late .label{color:var(--red-fg);}
+  .step.late .value{color:var(--red-fg);font-weight:700;}
+  .step .label{font-size:9.5px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.2px;}
+  .step .value{font-size:10.5px;color:var(--muted);margin-top:2px;}
+
+  .gtm-footer{display:flex;justify-content:space-between;align-items:center;margin-top:12px;gap:8px;}
+  .gtm-notes-preview{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;}
+  .gtm-actions{display:flex;gap:6px;flex-shrink:0;}
+  .gtm-edit-panel{margin-top:14px;padding-top:14px;border-top:1px dashed var(--border);display:none;grid-template-columns:1fr 1fr;gap:10px 14px;}
+  .gtm-edit-panel.open{display:grid;}
+  .gtm-edit-panel .field-block.full{grid-column:1/-1;}
+  .gtm-edit-panel label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:3px;}
+  .gtm-edit-panel input, .gtm-edit-panel select, .gtm-edit-panel textarea{
+    width:100%;border:1px solid var(--border);background:#fff;padding:7px 8px;font-size:12.5px;border-radius:6px;font-family:inherit;
+  }
+  .gtm-edit-panel textarea{resize:vertical;min-height:50px;}
+  .gtm-summary{background:#fff;border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:16px;display:flex;gap:28px;flex-wrap:wrap;}
+  .gtm-summary .item{text-align:left;}
+  .gtm-summary .item .n{font-size:24px;font-weight:800;color:var(--navy);}
+  .gtm-summary .item .l{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;}
+
+  /* --- Promo Tools: same grid as games, grouped at the bottom with a
+     divider, and tinted purple so they're instantly distinguishable from
+     real game releases without needing a separate tab. --- */
+  .gtm-promo-divider{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:6px 0 -2px;}
+  .gtm-promo-divider span{font-size:11.5px;font-weight:700;color:var(--purple-fg);text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+  .gtm-promo-divider .line{flex:1;height:1px;background:var(--border);}
+  .gtm-card.promo-tool{background:#F7F2FC;border-color:#D9C7EF;border-top-color:var(--purple-fg);}
+  .gtm-card.is-late{border-top-color:var(--red-fg);}
+  .gtm-card.promo-tool .gtm-card-head h3{color:var(--purple-fg);}
+  .gtm-card.promo-tool .gtm-pct .num{color:var(--purple-fg);}
+  .gtm-card.promo-tool .stepper::before{background:#E4D9F0;}
+
+  /* --- Release Schedule: left sidebar of clickable month cards, styled
+     as a dark nav list (dot + name + count badge) like the reference
+     project sidebar rather than solid colored tiles. --- */
+  .schedule-layout{display:flex;gap:20px;align-items:flex-start;}
+  .schedule-sidebar{width:200px;flex-shrink:0;background:var(--header-dark);border-radius:14px;padding:14px 8px;position:sticky;top:16px;min-height:calc(100vh - 170px);}
+  .schedule-content{flex:1;min-width:0;}
+  .schedule-sidebar-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:#8d81c9;font-weight:700;padding:4px 8px 8px;}
+  .schedule-all-btn{display:flex;align-items:center;gap:8px;padding:9px 8px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:700;color:#c7bff2;background:transparent;border:none;width:100%;text-align:left;margin-bottom:6px;}
+  .schedule-all-btn::before{content:'';width:8px;height:8px;border-radius:2px;background:#9C8CFF;flex-shrink:0;}
+  .schedule-all-btn:hover{background:rgba(255,255,255,0.06);}
+  .schedule-all-btn.active{background:rgba(156,140,255,0.22);color:#fff;}
+  .schedule-month-btn{display:flex;align-items:center;gap:7px;padding:8px 8px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:600;color:#c7bff2;background:transparent;border:none;width:100%;text-align:left;}
+  .schedule-month-btn:hover{background:rgba(255,255,255,0.06);}
+  .schedule-month-btn.active{background:rgba(255,255,255,0.1);color:#fff;}
+  .schedule-month-btn .msticker{font-size:14px;flex-shrink:0;width:18px;text-align:center;}
+  .schedule-month-btn .mdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+  .schedule-month-btn.has-games .mdot{background:#4ADE80;}
+  .schedule-month-btn.is-empty .mdot{background:#F87171;}
+  .schedule-month-btn .mname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13.5px;font-weight:700;}
+  .schedule-month-btn .mbadge{font-size:10px;font-weight:800;min-width:16px;height:16px;padding:0 4px;border-radius:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .schedule-month-btn.has-games .mbadge{background:rgba(74,222,128,0.18);color:#4ADE80;}
+  .schedule-month-btn.is-empty .mbadge{background:rgba(248,113,113,0.18);color:#F87171;}
+  @media (max-width:640px){ .schedule-layout{flex-direction:column;} .schedule-sidebar{width:100%;position:static;} }
+
+  /* --- Release Schedule board: one flat grid of game stickers, no
+     per-month boxes. "All months" shows every dated/named sticker; picking
+     a month in the sidebar filters this same grid down to just that
+     month's stickers. Fixed 5-column layout per request, collapsing to
+     fewer columns only on narrow screens so stickers stay a sensible size. --- */
+  .schedule-month-detail-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+  .schedule-month-detail-head h3{margin:0;font-size:19px;color:var(--navy);}
+  .schedule-month-detail-head-right{display:flex;align-items:center;gap:12px;}
+  .schedule-month-detail-count{font-size:12.5px;color:var(--muted);font-weight:600;}
+  .schedule-flat-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:14px;align-items:start;}
+  .schedule-flat-grid .ticket{margin-bottom:0;}
+  @media (max-width:1500px){ .schedule-flat-grid{grid-template-columns:repeat(5,1fr);} }
+  @media (max-width:1250px){ .schedule-flat-grid{grid-template-columns:repeat(4,1fr);} }
+  @media (max-width:1000px){ .schedule-flat-grid{grid-template-columns:repeat(3,1fr);} }
+  @media (max-width:750px){ .schedule-flat-grid{grid-template-columns:repeat(2,1fr);} }
+  .ticket{margin-bottom:18px;}
+  .ticket:last-child{margin-bottom:0;}
+  .ticket-empty{color:var(--muted);font-size:12px;text-align:center;padding:10px 0 16px;grid-column:1/-1;}
+
+  /* --- Release Schedule sticker: a compact white project-card (icon,
+     status badge, title, month, a date pill, and a notes preview) instead
+     of a colored sticky note. Each card = one game's info at a glance. --- */
+  .sched-card{
+    position:relative; display:flex; flex-direction:column;
+    background:#fff; border:1px solid var(--border); border-top:4px solid var(--navy-light);
+    border-radius:12px; box-shadow:0 2px 10px rgba(46,32,105,0.06);
+    overflow:hidden; width:100%; height:200px; padding:14px 14px 10px;
+    color:var(--text);
+  }
+  .sched-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;flex-shrink:0;}
+  .sched-card-icon{font-size:20px;line-height:1;}
+  .sched-card-badge{font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap;flex-shrink:0;}
+  .sched-card-badge.scheduled{background:var(--green-bg);color:var(--green-fg);}
+  .sched-card-badge.pending{background:var(--gray-bg);color:var(--gray-fg);}
+  .sched-card-title{font-size:16px;font-weight:800;color:var(--navy);line-height:1.25;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .sched-card-pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--navy-pale);color:var(--navy-light);margin-bottom:8px;flex-shrink:0;}
+  .sched-card-pill.muted{background:var(--gray-bg);color:var(--gray-fg);}
+  .sched-card .sticky-note-body{flex:1;padding:0;font-size:12.5px;line-height:1.5;color:var(--muted);}
+  .sched-card .sticky-note-body ul{margin:0;padding-left:16px;}
+  .sched-card .sticky-note-header{padding:0;gap:0;}
+  .sched-card .sticky-note-title-row input[type="text"]{color:var(--navy);font-size:16px;}
+  .sched-card .sticky-note-meta-row{color:var(--muted);opacity:1;}
+  .sched-card .note-del{color:var(--muted);}
+  .sched-card .sticky-note-toolbar{background:var(--navy-pale);margin:4px -14px -10px;padding:4px 10px;}
+
+  /* Sticky-note style ticket — one solid-colored surface, like the OS
+     Sticky Notes app: a title bar up top, plain text typed straight onto
+     the colored background (no nested white boxes), and a slim formatting
+     toolbar docked at the bottom. Drag the bottom-right corner to resize;
+     size is remembered per-ticket. */
+  .sticky-note{
+    position:relative;
+    display:flex; flex-direction:column;
+    border-radius:10px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.10);
+    resize:none; overflow:hidden;
+    width:230px; height:210px;
+    flex-shrink:0;
+  }
+  .sticky-note-header{
+    display:flex; flex-direction:column; gap:2px;
+    padding:8px 8px 2px;
+    flex-shrink:0;
+  }
+  .sticky-note-title-row{
+    display:flex; align-items:center; gap:4px;
+  }
+  .sticky-note-title-row input[type="text"]{
+    flex:1; min-width:0;
+    background:transparent; border:none; outline:none;
+    font-weight:800; font-size:14px; font-family:inherit;
+    color:inherit; padding:2px 0;
+  }
+  .sticky-note-title-row input[type="text"]::placeholder{ color:rgba(0,0,0,.35); }
+  .sticky-note-meta-row{
+    display:flex; align-items:center; gap:5px; opacity:.8;
+  }
+  .sticky-note-header select{
+    background:transparent; border:none; outline:none; cursor:pointer;
+    font-size:10px; font-weight:600; color:inherit; opacity:.9; font-family:inherit;
+  }
+  .sticky-note-header .sticky-note-date-input{
+    flex:0 0 auto; width:92px;
+    background:transparent; border:none; outline:none; cursor:pointer;
+    font-size:10px; font-weight:600; color:inherit; font-family:inherit;
+    padding:2px 0;
+  }
+  .sticky-note-header .sticky-note-mismatch{
+    font-size:11px; color:#833C00; flex-shrink:0; cursor:help;
+  }
+  .sticky-note-date{
+    font-size:10.5px; font-weight:700; padding:0 8px 3px; opacity:.8; flex-shrink:0;
+  }
+  .sticky-note-header .note-del{
+    background:transparent; border:none; cursor:pointer;
+    color:inherit; opacity:.45; font-size:13px; padding:2px 3px; line-height:1;
+  }
+  .sticky-note-header .note-del:hover{ opacity:.85; }
+
+  /* Small color-swatch button in the title bar that opens a popover of
+     pastel color dots to click (like choosing a sticky-note color). */
+  .sticky-note-header .note-color-btn{
+    width:14px; height:14px; border-radius:50%; border:1px solid rgba(0,0,0,.25);
+    cursor:pointer; flex-shrink:0; padding:0;
+  }
+  .sticky-color-popover{
+    position:absolute; top:28px; right:6px; z-index:20;
+    background:#fff; border:1px solid var(--border); border-radius:10px;
+    box-shadow:0 6px 18px rgba(0,0,0,.18);
+    padding:8px; display:flex; gap:6px;
+  }
+  .sticky-color-popover button{
+    width:22px; height:22px; border-radius:50%; border:2px solid transparent;
+    cursor:pointer; padding:0;
+  }
+  .sticky-color-popover button.selected{ border-color:var(--navy); }
+  .sticky-note-view-title{
+    font-weight:700; font-size:12.5px; padding:7px 8px 1px; flex-shrink:0;
+  }
+
+  /* The typing surface fills the rest of the colored note — fully
+     transparent so the note's own background color shows through. */
+  .sticky-note-body{
+    flex:1; overflow:auto;
+    padding:2px 8px 6px;
+    font-size:11.5px; line-height:1.45; color:inherit;
+    outline:none; background:transparent;
+  }
+  .sticky-note-body ul{ margin:4px 0; padding-left:16px; }
+  .sticky-note-body img{ max-width:100%; border-radius:4px; margin-top:4px; }
+  .sticky-note-body[contenteditable]:empty:before{ content:attr(data-placeholder); color:rgba(0,0,0,.38); }
+
+  /* Bottom-docked formatting toolbar — flat icon buttons over a slightly
+     darker strip of the note's own color, matching the reference sticky
+     note toolbar (B / I / U / S / bullet list / image), no boxed pink bar. */
+  .sticky-note-toolbar{
+    display:flex; align-items:center; gap:1px;
+    padding:4px 6px;
+    border-top:1px solid rgba(0,0,0,.08);
+    background:rgba(255,255,255,.28);
+    flex-shrink:0;
+  }
+  .sticky-note-toolbar button{
+    width:21px; height:19px; border:none; background:transparent; border-radius:4px;
+    cursor:pointer; font-size:11px; color:inherit; opacity:.75;
+    display:flex; align-items:center; justify-content:center; font-family:inherit;
+  }
+  .sticky-note-toolbar button:hover{ opacity:1; background:rgba(0,0,0,.08); }
+  .sticky-note-toolbar button.b{ font-weight:800; }
+  .sticky-note-toolbar button.i{ font-style:italic; font-weight:600; }
+  .sticky-note-toolbar button.u{ text-decoration:underline; font-weight:600; }
+  .sticky-note-toolbar button.s{ text-decoration:line-through; font-weight:600; }
+  .sticky-note-toolbar .sep{ width:1px; height:13px; background:rgba(0,0,0,.12); margin:0 2px; }
+  .sticky-note-toolbar input[type="file"]{ display:none; }
+
+
+
+  .settings-box{max-width:480px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:20px;}
+  .settings-box label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px;}
+  .settings-box input{width:100%;padding:9px;border:1px solid var(--border);border-radius:6px;margin-bottom:16px;font-size:13px;}
+
+  #localBanner{background:var(--yellow-bg);color:var(--yellow-fg);padding:8px 24px;font-size:12.5px;font-weight:600;text-align:center;}
+  footer{text-align:center;padding:24px;color:var(--muted);font-size:11.5px;}
+
+  @media (max-width:900px){ .dash-grid{grid-template-columns:1fr;} }
 </style>
 </head>
 <body>
 
-<div class="top">
-  <div>
-    <h1>Release Calendar</h1>
-    <div class="sub">All new game releases grouped by month. Promo tools are listed under their own line inside each month.</div>
-  </div>
-  <div class="btns">
-    <input type="search" id="q" placeholder="Search games, owners, partner">
-    <button class="primary">+ Add Game</button>
+<div id="errorBanner" class="hidden">
+  <span id="errorBannerText"></span>
+  <button onclick="document.getElementById('errorBanner').classList.add('hidden')">Dismiss</button>
+</div>
+
+<div id="pinGate">
+  <div class="pin-box">
+    <h1>Galaxsys Game Release Tracker</h1>
+    <p>Enter your PIN to continue</p>
+    <div class="pin-error" id="pinError"></div>
+    <input type="password" id="pinInput" maxlength="16" autocomplete="off" placeholder="••••">
+    <button id="unlockBtn" onclick="tryUnlock()" disabled>Loading…</button>
+    <div class="pin-hint">Viewers get a read-only dashboard for monitoring. Editors can add and update release data. Ask your PM if you don't know your PIN.</div>
   </div>
 </div>
 
-<div class="filters">
-  <select id="fq"><option>All quarters</option><option>Q1</option><option selected>Q2</option><option>Q3</option><option>Q4</option></select>
-  <select id="fs"><option>All Stages</option><option>Production</option></select>
-  <select id="ft"><option>All Product Types</option></select>
-  
-  <button id="clear">Clear Filters</button>
+<div id="app" class="hidden">
+  <div id="localBanner" class="hidden">⚠ Supabase is not configured yet — running in local-only mode. Data is saved to this browser only and will not sync between users. See the setup comment at the top of this file.</div>
+  <header>
+    <div>
+      <h1>Galaxsys Game Release Tracker</h1>
+      <div class="sub">Go-to-market pipeline for every new game release</div>
+    </div>
+    <div class="header-right">
+      <span id="modeBadge" class="badge-pill mode-viewer-badge">Viewer Mode</span>
+      <span id="syncBadge" class="badge-pill sync-local">Local only</span>
+      <button class="lockBtn" onclick="lockApp()">Lock</button>
+      <div class="header-logo"><span class="mark">✦</span><span class="word">GALAXSYS</span></div>
+    </div>
+  </header>
+  <nav id="tabNav">
+    <button data-tab="calendar" class="active">Release Calendar</button>
+    <button data-tab="gtm">Go-to-Market</button>
+    <button data-tab="dashboard">Dashboard</button>
+    <button data-tab="prerelease">Pre-Release Tracker</button>
+    <button data-tab="schedule">Release Schedule</button>
+    <button data-tab="partners">Top Partners</button>
+    <button data-tab="snapshot">Performance Snapshot</button>
+    <button data-tab="settings" class="editor-only">Settings</button>
+  </nav>
+
+  <main>
+    <!-- RELEASE CALENDAR -->
+    <section class="panel active" id="panel-calendar">
+      <div class="panel-head">
+        <div><h2>Release Calendar</h2><p>Full detail table for all new game releases — best for bulk editing. Click a column header to sort. Drag column edges to resize; drag the ⠿ handle to reorder rows. Quarter, Game Name, and Stage stay pinned while you scroll right.</p></div>
+        <div class="toolbar">
+          <input class="search" id="calendarSearchInput" placeholder="Search games, owners, partners…" oninput="calendarFilters.text=this.value; renderTable('release_calendar');">
+          <button class="btn secondary" onclick="resetCalendarColumnWidths()">Reset Column Widths</button>
+          <button class="btn editor-only" onclick="addRow('release_calendar')">+ Add Game</button>
+        </div>
+      </div>
+      <div class="calendar-filterbar">
+        <select id="calFilterQuarter" onchange="calendarFilters.quarter=this.value; renderTable('release_calendar');"><option value="All">All Quarters</option></select>
+        <select id="calFilterStage" onchange="calendarFilters.stage=this.value; renderTable('release_calendar');"><option value="All">All Stages</option></select>
+        <select id="calFilterType" onchange="calendarFilters.product_type=this.value; renderTable('release_calendar');"><option value="All">All Product Types</option></select>
+        <button class="btn secondary" onclick="clearCalendarFilters()">Clear Filters</button>
+      </div>
+      <div class="drag-hint editor-only" id="calendarDragHint"></div>
+      <div class="table-wrap freeze-wrap" id="calendarTableWrap"><table id="table-release_calendar"><colgroup id="colgroup-release_calendar"></colgroup><thead><tr id="head-release_calendar"></tr></thead><tbody id="body-release_calendar"></tbody></table></div>
+    </section>
+
+    <!-- GO-TO-MARKET -->
+    <section class="panel" id="panel-gtm">
+      <div class="panel-head">
+        <div>
+          <h2>Go-to-Market Pipeline</h2>
+          <p>Every game's path to launch: Production → Toto → Albatros → global launch</p>
+        </div>
+        <div class="toolbar">
+          <input class="search" id="gtmSearch" placeholder="Search games…" oninput="gtmFilter.search=this.value; renderGTM();">
+          <button class="btn editor-only" onclick="addGtmGame()">+ Add Game</button>
+        </div>
+      </div>
+
+      <div class="gtm-summary" id="gtmSummary"></div>
+
+      <div class="panel-head" style="margin-bottom:10px;">
+        <div class="chiprow" id="gtmQuarterChips"></div>
+        <label class="checklabel"><input type="checkbox" id="gtmPendingOnly" onchange="gtmFilter.pendingOnly=this.checked; renderGTM();"> Show only games not fully ready</label>
+      </div>
+
+      <div id="gtmGrid"></div>
+      <div id="gtmEmpty" class="empty-note hidden">No games match this filter.</div>
+    </section>
+
+    <!-- DASHBOARD -->
+    <section class="panel" id="panel-dashboard">
+      <div class="panel-head">
+        <div>
+          <h2>Dashboard</h2>
+          <p>Live overview — updates automatically as the Release Calendar changes</p>
+        </div>
+      </div>
+      <div class="kpis" id="kpiRow"></div>
+      <div class="dash-grid">
+        <div class="charts">
+          <div class="chart-card"><h3>Games by Stage</h3><canvas id="chartStage"></canvas></div>
+          <div class="chart-card"><h3>Games by Product Type</h3><canvas id="chartType"></canvas></div>
+          <div class="chart-card"><h3>Games by Quarter</h3><canvas id="chartQuarter"></canvas></div>
+          <div class="chart-card"><h3>Go-to-Market Readiness</h3><canvas id="chartReadiness"></canvas></div>
+        </div>
+        <div class="milestone-card">
+          <h3>Upcoming Milestones</h3>
+          <div id="milestoneList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRE-RELEASE -->
+    <section class="panel" id="panel-prerelease">
+      <div class="panel-head">
+        <div><h2>Pre-Release Tracker</h2><p>Soft-launch and pre-release partner rollouts, grouped by game — click a game to expand it. Click ADD, then type the game name straight into the row (suggestions come from Release Calendar, but any name works).</p></div>
+        <div class="toolbar">
+          <input class="search" id="prereleaseSearchInput" placeholder="Search…" oninput="prereleaseFilter.text=this.value; renderPrerelease();">
+          <button class="btn secondary" onclick="expandAllPrereleaseGroups()">Expand All</button>
+          <button class="btn secondary" onclick="collapseAllPrereleaseGroups()">Collapse All</button>
+          <button class="btn editor-only" onclick="promptAddPrereleaseGame()">+ Add Game</button>
+          <button class="btn editor-only" onclick="addRow('pre_release')">+ ADD</button>
+        </div>
+      </div>
+      <div id="prereleaseAccordion"></div>
+      <div id="prereleaseEmpty" class="empty-note hidden">No entries match your search.</div>
+    </section>
+
+    <!-- RELEASE SCHEDULE -->
+    <section class="panel" id="panel-schedule">
+      <div class="panel-head">
+        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Give each note a game name and release date. Click a month on the left to jump to it — green means it has games, red means it's still empty.</p></div>
+      </div>
+      <div class="schedule-layout">
+        <aside class="schedule-sidebar" id="scheduleSidebar"></aside>
+        <div class="schedule-content">
+          <div id="scheduleContentHead" class="schedule-month-detail-head"></div>
+          <div id="scheduleGrid" class="schedule-flat-grid"></div>
+          <div id="scheduleEmpty" class="empty-note hidden">No releases scheduled for this period.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TOP PARTNERS -->
+    <section class="panel" id="panel-partners">
+      <div class="panel-head">
+        <div><h2>Top Partners</h2><p>Ranked by player volume</p></div>
+        <div class="toolbar">
+          <input class="search" placeholder="Search…" oninput="renderTable('top_partners', this.value)">
+          <button class="btn editor-only" onclick="addRow('top_partners')">+ Add Partner</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr id="head-top_partners"></tr></thead><tbody id="body-top_partners"></tbody></table></div>
+    </section>
+
+    <!-- SNAPSHOT -->
+    <section class="panel" id="panel-snapshot">
+      <div class="panel-head">
+        <div><h2>Performance Snapshot</h2><p>Ad-hoc post-launch performance figures</p></div>
+        <div class="toolbar">
+          <button class="btn editor-only" onclick="addRow('performance_snapshot')">+ Add Row</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table><thead><tr id="head-performance_snapshot"></tr></thead><tbody id="body-performance_snapshot"></tbody></table></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="panel" id="panel-settings">
+      <div class="panel-head">
+        <div><h2>Settings</h2><p>Manage the shared access PINs for this tracker</p></div>
+      </div>
+      <div class="settings-box">
+        <p style="font-size:12.5px;color:var(--muted);margin-top:0;" id="settingsScopeNote"></p>
+        <label>New Viewer PIN (leave blank to keep current)</label>
+        <input type="password" id="newViewPin" autocomplete="off">
+        <label>New Editor PIN (leave blank to keep current)</label>
+        <input type="password" id="newEditPin" autocomplete="off">
+        <button class="btn" onclick="saveNewPins()">Save PIN Changes</button>
+        <div id="pinSaveMsg" style="font-size:12px;margin-top:12px;font-weight:600;"></div>
+      </div>
+    </section>
+  </main>
+  <footer>Galaxsys Game Release Tracker · data syncs live via Supabase</footer>
 </div>
-
-<div class="wrap"><table>
-<thead><tr>
- <th class="name">Game name</th><th>Stage</th><th>Product type</th><th>Product owner</th><th>PM assigned</th><th>Exclusive</th>
- <th>Planned production</th><th>Toto live</th><th>Albatros live</th><th>Pre-release win</th><th>Global launch</th><th>Demo link</th><th>Notes</th>
-</tr></thead>
-<tbody id="body"></tbody></table></div>
-
-<div class="note">Months follow the Global Launch date. With no launch date the Planned Production date is used; with neither, the game stays in the first month of its quarter. Prototype is read-only; inline editing, drag-reorder and column resize carry over from the current table.</div>
 
 <script>
-const DATA = [
- {q:'Q2',name:'Infinity',stage:'Production',type:'Fast',owner:'Hayk Sargsyan',pm:'Kristina Kirakosyan',excl:'',planned:'15.05.2026',toto:'08.06.2026',alb:'08.06.2026',pre:'',launch:'29.06.2026',demo:'https://galaxsys.co/games/In…',notes:''},
- {q:'Q2',name:'Instawin/ Swipe',stage:'Production',type:'Fast',owner:'Hayk Varosyan',pm:'Lilit Hovhannisyan',excl:'',planned:'30.04.2026',toto:'20.06.2026',alb:'08.06.2026',pre:'',launch:'16.06.2026',demo:'https://galaxsys.co/games/In…',notes:'CHG-339387'},
- {q:'Q2',name:'American Roulete',stage:'Production',type:'Fast',owner:'Sevak Amin',pm:'Lilit Hovhannisyan',excl:'',planned:'30.05.2026',toto:'04.06.2026',alb:'15.06.2026',pre:'',launch:'22.06.2026',demo:'https://galaxsys.co/games/A…',notes:''},
- {q:'Q2',name:'Handigo',stage:'Production',type:'Table Game',owner:'Hayk Sargsyan',pm:'Lilit Hovhannisyan',excl:'',planned:'16.06.2026',toto:'',alb:'',pre:'',launch:'20.07.2026',demo:'',notes:''},
- {q:'Q2',name:'Crashback',stage:'Production',type:'Promo Tool',owner:'Sevak Amin',pm:'Lilit Hovhannisyan',excl:'',planned:'15.05.2026',toto:'',alb:'',pre:'',launch:'',demo:'',notes:''},
- {q:'Q2',name:'Aviabom',stage:'Production',type:'Fast',owner:'Sevak Amin',pm:'Ani Mkrtchyan',excl:'Casibom',planned:'06.05.2026',toto:'27.07.2026',alb:'14.07.2026',pre:'',launch:'17.08.2026',demo:'',notes:'CHG-354485'},
- {q:'Q2',name:'Rise of Frog',stage:'Production',type:'Slot',owner:'Hovak Khyureghyan',pm:'Kristina Kirakosyan',excl:'',planned:'10.06.2026',toto:'15.06.2026',alb:'21.06.2026',pre:'',launch:'16.07.2026',demo:'',notes:''},
- {q:'Q2',name:'Jackpot',stage:'Production',type:'Promo Tool',owner:'Hayk Sargsyan',pm:'Lilit Hovhannisyan',excl:'',planned:'10.07.2026',toto:'',alb:'',pre:'',launch:'',demo:'',notes:''},
- {q:'Q2',name:'Match day',stage:'Production',type:'Promo Tool',owner:'Sevak Amin',pm:'Kristina Kirakosyan',excl:'',planned:'09.06.2026',toto:'',alb:'',pre:'',launch:'19.06.2026',demo:'',notes:''},
+const SUPABASE_URL = 'https://smtskvysygsblojqrpjh.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable__61Y4EAuMmxwiTgAt8Nk0A__LGg7oAA';
+
+const VIEW_PIN_HASH = '158a323a7ba44870f23d96f1516dd70aa48e9a72db4ebb026b0a89e212a208ab';
+const EDIT_PIN_HASH = '155997a3abd51a8faef47e919467668a130e6c8b6c72403935f30766c150f6a7';
+
+function reportError(msg){
+  console.error(msg);
+  try{
+    const b = document.getElementById('errorBanner');
+    const t = document.getElementById('errorBannerText');
+    if(b && t){ t.textContent = msg; b.classList.remove('hidden'); }
+  } catch(e){ }
+}
+window.addEventListener('error', e=>reportError('Something went wrong: ' + (e.message || e)));
+window.addEventListener('unhandledrejection', e=>{
+  const reason = e.reason && e.reason.message ? e.reason.message : e.reason;
+  reportError('Something went wrong: ' + reason);
+});
+
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+window.sha256Hex = sha256Hex;
+
+let EDIT_MODE = false;
+let currentViewPinHash = VIEW_PIN_HASH;
+let currentEditPinHash = EDIT_PIN_HASH;
+
+function isSupabaseConfigured(){
+  return !!(SUPABASE_URL && !SUPABASE_URL.includes('YOUR_') &&
+            SUPABASE_ANON_KEY && !SUPABASE_ANON_KEY.includes('YOUR_') &&
+            window.supabase);
+}
+
+async function resolvePinHashes(){
+  try{
+    const override = JSON.parse(localStorage.getItem('gxs_pin_override') || 'null');
+    if(override){
+      if(override.view) currentViewPinHash = override.view;
+      if(override.edit) currentEditPinHash = override.edit;
+    }
+  } catch(e){ }
+
+  if(!isSupabaseConfigured()) return;
+  try{
+    const tempClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const fetchPromise = tempClient.from('app_config').select('key,value').in('key', ['view_pin_hash','edit_pin_hash']);
+    const timeoutPromise = new Promise((_, reject)=>setTimeout(()=>reject(new Error('Supabase timed out')), 4000));
+    const {data, error} = await Promise.race([fetchPromise, timeoutPromise]);
+    if(error) throw error;
+    (data||[]).forEach(r=>{
+      if(r.key==='view_pin_hash' && r.value) currentViewPinHash = r.value;
+      if(r.key==='edit_pin_hash' && r.value) currentEditPinHash = r.value;
+    });
+  } catch(e){
+    console.warn('Could not load shared PINs from Supabase, using local defaults:', e.message || e);
+  }
+}
+
+async function tryUnlock(){
+  const val = document.getElementById('pinInput').value.trim();
+  const hash = await sha256Hex(val);
+  if(hash === currentEditPinHash){ unlock('edit'); }
+  else if(hash === currentViewPinHash){ unlock('view'); }
+  else { document.getElementById('pinError').textContent = 'Incorrect PIN'; }
+}
+function unlock(mode){
+  EDIT_MODE = (mode === 'edit');
+  sessionStorage.setItem('gxs_unlocked','1');
+  sessionStorage.setItem('gxs_mode', mode);
+  document.getElementById('pinGate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.body.classList.remove('mode-view','mode-edit');
+  document.body.classList.add('mode-'+mode);
+  const mb = document.getElementById('modeBadge');
+  mb.textContent = EDIT_MODE ? 'Editor Mode' : 'Viewer Mode';
+  mb.className = 'badge-pill ' + (EDIT_MODE ? 'mode-editor-badge' : 'mode-viewer-badge');
+  boot();
+}
+function lockApp(){
+  sessionStorage.removeItem('gxs_unlocked');
+  sessionStorage.removeItem('gxs_mode');
+  location.reload();
+}
+document.getElementById('pinInput').addEventListener('keydown', e=>{ if(e.key==='Enter') tryUnlock(); });
+
+(async function initPinGate(){
+  const btn = document.getElementById('unlockBtn');
+  try{
+    await resolvePinHashes();
+  } catch(e){
+    reportError('Could not check PIN configuration, using built-in defaults: ' + (e.message||e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Unlock';
+  }
+  if(sessionStorage.getItem('gxs_unlocked')==='1'){
+    const savedMode = sessionStorage.getItem('gxs_mode') || 'view';
+    document.getElementById('pinGate').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    document.body.classList.add('mode-'+savedMode);
+    EDIT_MODE = savedMode === 'edit';
+    const mb = document.getElementById('modeBadge');
+    mb.textContent = EDIT_MODE ? 'Editor Mode' : 'Viewer Mode';
+    mb.className = 'badge-pill ' + (EDIT_MODE ? 'mode-editor-badge' : 'mode-viewer-badge');
+    boot();
+  }
+})();
+
+async function saveNewPins(){
+  const nv = document.getElementById('newViewPin').value.trim();
+  const ne = document.getElementById('newEditPin').value.trim();
+  const msg = document.getElementById('pinSaveMsg');
+  if(!nv && !ne){ msg.style.color = '#B00020'; msg.textContent = 'Enter at least one new PIN.'; return; }
+
+  if(nv) currentViewPinHash = await sha256Hex(nv);
+  if(ne) currentEditPinHash = await sha256Hex(ne);
+  localStorage.setItem('gxs_pin_override', JSON.stringify({view: currentViewPinHash, edit: currentEditPinHash}));
+
+  if(ONLINE_MODE){
+    try{
+      const rows = [];
+      if(nv) rows.push({key:'view_pin_hash', value: currentViewPinHash});
+      if(ne) rows.push({key:'edit_pin_hash', value: currentEditPinHash});
+      const {error} = await supa.from('app_config').upsert(rows);
+      if(error) throw error;
+      msg.style.color = 'var(--green-fg)';
+      msg.textContent = 'Saved — synced to everyone on this tracker.';
+    } catch(e){
+      msg.style.color = '#B00020';
+      msg.textContent = 'Saved for this browser, but syncing to Supabase failed: ' + (e.message||e);
+    }
+  } else {
+    msg.style.color = 'var(--yellow-fg)';
+    msg.textContent = 'Saved for this browser only — connect Supabase to sync PIN changes to your whole team.';
+  }
+  document.getElementById('newViewPin').value = '';
+  document.getElementById('newEditPin').value = '';
+}
+
+const SEED = {"release_calendar": [], "pre_release": [], "schedule_tickets": [], "top_partners": [], "performance_snapshot": []};
+
+const LISTS = {
+  quarter: ['Q1','Q2','Q3','Q4'],
+  stage: ['Planning','Design','Development','Testing','QA','Staging','Production','Soft Launch'],
+  product_type: ['Slot','Crash','Fast','Table Game','Promo Tool','Tournament'],
+  assets_ready: ['Ready','In Progress','No','Yes'],
+  push_ready: ['Ready','In Progress','No']
+};
+
+/* Fixed list of partner managers for the Pre-Release Tracker's PM dropdown. */
+const PM_LIST = ['Artavazd','Mikael','Meri','Yana','Rafael'];
+
+/* The two sub-sections shown inside each expanded game group in the
+   Pre-Release Tracker: pre-release partner rollouts (green) vs. the
+   game's best/confirmed positions (blue). */
+const PRERELEASE_SECTIONS = ['Pre-Release Positions', 'Best Positions'];
+const PRERELEASE_SECTION_COLORS = {
+  'Pre-Release Positions': ['--green-bg','--green-fg'],
+  'Best Positions': ['--blue-bg','--blue-fg']
+};
+
+/* Returns the current, deduplicated, alphabetised list of game names from
+   the Release Calendar tab. Called fresh every time the Pre-Release Tracker's
+   Game dropdown is built, so newly added games show up automatically. */
+function getReleaseCalendarGameNames(){
+  const names = (state.release_calendar || [])
+    .map(r => (r.game_name || '').trim())
+    .filter(Boolean);
+  return [...new Set(names)].sort((a,b)=>a.localeCompare(b));
+}
+
+const STAGE_COLORS = {
+  Planning:['--blue-bg','--blue-fg'], Design:['--blue-bg','--blue-fg'],
+  Development:['--gray-bg','--gray-fg'], Testing:['--red-bg','--red-fg'],
+  QA:['--yellow-bg','--yellow-fg'], Staging:['--purple-bg','--purple-fg'],
+  Production:['--green-bg','--green-fg'], 'Soft Launch':['--blue-bg','--blue-fg']
+};
+const ASSETS_COLORS = {
+  Ready:['--green-bg','--green-fg'], Yes:['--green-bg','--green-fg'],
+  'In Progress':['--yellow-bg','--yellow-fg'], No:['--red-bg','--red-fg']
+};
+
+const TABLES = {
+  release_calendar: {
+    label: 'Release Calendar',
+    columns: [
+      {key:'quarter', label:'Quarter', type:'select', options:LISTS.quarter, w:70},
+      {key:'game_name', label:'Game Name', type:'text', w:170},
+      {key:'stage', label:'Stage', type:'select', options:LISTS.stage, badge:STAGE_COLORS, w:110},
+      {key:'product_type', label:'Product Type', type:'select', options:LISTS.product_type, w:110},
+      {key:'product_owner', label:'Product Owner', type:'text', w:140},
+      {key:'pm_assigned', label:'PM Assigned', type:'text', w:140},
+      {key:'exclusive_partner', label:'Exclusive Partner', type:'text', w:90},
+      {key:'planned_production_date', label:'Planned Production', type:'date', w:140},
+      {key:'toto_live_date', label:'Toto Live', type:'date', w:140},
+      {key:'albatros_live_date', label:'Albatros Live', type:'date', w:140},
+      {key:'pre_release_window', label:'Pre-Release Window', type:'date', w:140},
+      {key:'planned_global_launch', label:'Global Launch', type:'date', w:140, bold:true},
+      /* Shared with the Go-to-Market pipeline's "Demo Link" and "Emails"
+         steps — editing either one here updates the GTM card, and vice
+         versa, since both tabs read/write the same row fields. */
+      {key:'demo_link', label:'Demo Link', type:'text', w:180},
+      {key:'marketing_email', label:'Email', type:'text', w:180},
+      {key:'notes', label:'Notes', type:'textarea', w:260}
+    ]
+  },
+  pre_release: {
+    label:'Pre-Release Tracker',
+    columns:[
+      {key:'section', label:'Section', type:'select', options:PRERELEASE_SECTIONS, excludeFromGroupTable:true, w:0},
+      {key:'pm', label:'PM', type:'select', options:PM_LIST, w:110},
+      {key:'game', label:'Game', type:'combo', dynamicOptions:getReleaseCalendarGameNames, w:200},
+      {key:'partner', label:'Partner', type:'text', w:140},
+      {key:'date_window', label:'Date / Window', type:'text', w:130},
+      {key:'market', label:'Market', type:'text', w:120},
+      {key:'notes', label:'Notes', type:'textarea', w:220}
+    ]
+  },
+  /* Rendered by the custom Release Schedule board (renderSchedule), not by
+     the generic table renderer — this config only exists so load/save/sync
+     and the generic deleteRow() helper work the same way as other tables.
+     notes_html/width/height are read directly off each ticket row by the
+     custom sticky-note renderer below. */
+  schedule_tickets: {
+    label:'Release Schedule',
+    columns:[
+      {key:'month', label:'Month', type:'text', w:120},
+      {key:'game_name', label:'Game', type:'text', w:170},
+      {key:'release_date', label:'Release Date', type:'date', w:120},
+      {key:'notes', label:'Details', type:'textarea', w:260},
+      {key:'notes_html', label:'Details (rich text)', type:'textarea', w:260},
+      {key:'width', label:'Width', type:'text', w:80},
+      {key:'height', label:'Height', type:'text', w:80}
+    ]
+  },
+  top_partners: {
+    label:'Top Partners',
+    columns:[
+      {key:'rank', label:'Rank', type:'number', w:60},
+      {key:'partner', label:'Partner / Project', type:'text', w:200},
+      {key:'players_period1', label:'Players (Period 1)', type:'number', w:130},
+      {key:'players_period2', label:'Players (Period 2)', type:'number', w:130},
+      {key:'deal_owner', label:'Deal Owner', type:'text', w:130},
+      {key:'account_manager', label:'Account Manager', type:'text', w:150}
+    ]
+  },
+  performance_snapshot: {
+    label:'Performance Snapshot',
+    columns:[
+      {key:'game', label:'Game', type:'text', w:150},
+      {key:'period', label:'Period', type:'text', w:180},
+      {key:'ggr', label:'GGR', type:'number', w:110},
+      {key:'players', label:'Players', type:'number', w:110}
+    ]
+  }
+};
+
+const GTM_EDIT_KEYS = ['quarter','game_name','stage','product_type','product_owner','pm_assigned',
+  'exclusive_partner','planned_production_date','toto_live_date','albatros_live_date','planned_global_launch',
+  'notes'];
+
+const GTM_STEPS = [
+  {key:'planned_production_date', label:'Production', kind:'date'},
+  {key:'toto_live_date', label:'Toto Live', kind:'date'},
+  {key:'albatros_live_date', label:'Albatros', kind:'date'},
+  {key:'planned_global_launch', label:'Global Launch', kind:'date'}
 ];
-const MN=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const QMONTHS={Q1:[0,1,2],Q2:[3,4,5],Q3:[6,7,8],Q4:[9,10,11]};
-let basis='launch';
 
-const parse=s=>{if(!s)return null;const [d,m,y]=s.split('.').map(Number);return new Date(y,m-1,d)};
-const monthKey=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-const dateOf=g=>parse(g.launch||g.planned);
-const isPromo=g=>g.type==='Promo Tool';
-const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-const cell=(v,cls='')=>v?`<td class="date ${cls}">${esc(v)}</td>`:`<td class="date empty">dd.mm.yyyy</td>`;
-const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+let state = {};
+let supa = null;
+let ONLINE_MODE = false;
+const editingCells = new Set();
+const openGtmCards = new Set();
+let gtmFilter = { quarter:'All', pendingOnly:false, search:'' };
+let calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
+let scheduleFilter = { month:'All' };
+let prereleaseFilter = { text:'' };
+const openPrereleaseGames = new Set();
+const PRERELEASE_NO_GAME_LABEL = '— No game selected —';
 
-function row(g){
-  return `<tr>
-    <td class="name">${esc(g.name)}</td>
-    <td><span class="pill">${esc(g.stage)}</span></td>
-    <td><span class="type">${esc(g.type)}</span></td>
-    <td>${esc(g.owner)}</td><td>${esc(g.pm)}</td><td>${esc(g.excl)}</td>
-    ${cell(g.planned)}${cell(g.toto)}${cell(g.alb)}${cell(g.pre)}${cell(g.launch,'launch')}
-    <td>${g.demo?`<a href="#">${esc(g.demo)}</a>`:''}</td>
-    <td>${esc(g.notes)}</td></tr>`;
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const MONTH_QUARTERS = { January:'Q1', February:'Q1', March:'Q1', April:'Q2', May:'Q2', June:'Q2', July:'Q3', August:'Q3', September:'Q3', October:'Q4', November:'Q4', December:'Q4' };
+const MONTH_STICKERS = { January:'❄️', February:'💘', March:'🌱', April:'🌧️', May:'🌷', June:'☀️', July:'🎆', August:'🏖️', September:'🍂', October:'🎃', November:'🦃', December:'🎄' };
+
+/* Pastel sticky-note colors (background + matching text color), styled
+   after the OS Sticky Notes palette. If a ticket has an explicit `color`
+   key (chosen by the user via the swatch picker) that's used; otherwise
+   one is assigned deterministically from the ticket's id, so untouched
+   tickets keep a stable color across reloads/re-renders. */
+const STICKY_COLORS = [
+  {key:'yellow', bg:'#FFF3B0', text:'#5c4b00', accent:'#F2B705'},
+  {key:'pink',   bg:'#FAD4E4', text:'#6b2c47', accent:'#E85D9E'},
+  {key:'blue',   bg:'#CFE8FB', text:'#1c4a66', accent:'#3D8BE0'},
+  {key:'purple', bg:'#E3D9F7', text:'#4a3572', accent:'#8B6FE8'},
+  {key:'orange', bg:'#FFDCC2', text:'#7a3d10', accent:'#F2894E'},
+  {key:'mint',   bg:'#D6F0DA', text:'#276339', accent:'#3FAE6B'}
+];
+function stickyColorByKey(key){
+  return STICKY_COLORS.find(c=>c.key===key) || null;
 }
-function table(list,promo){
-  return `<div class="wrap"><table><thead><tr>
-    <th class="name">Game name</th><th>Stage</th><th>Product type</th><th>Product owner</th><th>PM assigned</th><th>Exclusive</th>
-    <th>Planned production</th><th>Toto live</th><th>Albatros live</th><th>Pre-release win</th><th>Global launch</th><th>Demo link</th><th>Notes</th>
-  </tr></thead><tbody>${list.map(row).join('')}</tbody></table></div>`;
+function stickyColorFor(ticket){
+  if(ticket.color){
+    const chosen = stickyColorByKey(ticket.color);
+    if(chosen) return chosen;
+  }
+  let h = 0;
+  const s = String(ticket.id || '');
+  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
+  return STICKY_COLORS[h % STICKY_COLORS.length];
+}
+let calendarSort = { key:null, dir:'asc' };
+let draggedCalendarRowId = null;
+let calendarColWidths = {};
+
+async function boot(){
+  try{ setupTabs(); } catch(e){ reportError('Failed to set up navigation: ' + (e.message||e)); }
+  try{ buildGtmQuarterChips(); } catch(e){ reportError('Failed to set up filters: ' + (e.message||e)); }
+  try{ populateCalendarFilterOptions(); } catch(e){ reportError('Failed to set up calendar filters: ' + (e.message||e)); }
+  try{ loadCalendarColWidths(); } catch(e){ console.warn('Could not load saved column widths', e); }
+  document.getElementById('settingsScopeNote').textContent = 'Changing a PIN here updates it for everyone who opens this tracker.';
+
+  try{
+    initSupabase();
+  } catch(e){
+    reportError('Supabase connection failed, continuing in local-only mode: ' + (e.message||e));
+    ONLINE_MODE = false;
+    updateSyncBadge();
+  }
+
+  try{
+    await loadAllTables();
+  } catch(e){
+    reportError('Failed to load data: ' + (e.message||e));
+  }
+
+  try{
+    backfillScheduleStickersFromCalendar();
+  } catch(e){
+    console.warn('Could not backfill Release Schedule stickers from Release Calendar:', e);
+  }
+
+  try{ renderAll(); } catch(e){ reportError('Failed to render the tracker: ' + (e.message||e)); }
+
+  if(ONLINE_MODE){
+    try{ subscribeRealtime(); } catch(e){ console.warn('Realtime subscription failed:', e); }
+  }
 }
 
-function render(){
-  const term=document.getElementById('q').value.toLowerCase();
-  const fq=document.getElementById('fq').value;
-  const fs=document.getElementById('fs').value;
-  const items=DATA.filter(g=>(fq==='All quarters'||g.q===fq)&&(fs==='All Stages'||g.stage===fs)
-     &&(!term||Object.values(g).join(' ').toLowerCase().includes(term)));
-  const buckets={};
-  const ensure=k=>buckets[k]??={games:[],promos:[]};
-  (fq==='All quarters'?[0,1,2,3,4,5,6,7,8,9,10,11]:QMONTHS[fq]).forEach(m=>ensure(2026+'-'+String(m+1).padStart(2,'0')));
-  items.forEach(g=>{const d=dateOf(g);const k=d?monthKey(d):(2026+'-'+String(QMONTHS[g.q][0]+1).padStart(2,'0'));(isPromo(g)?ensure(k).promos:ensure(k).games).push(g)});
-  const keys=Object.keys(buckets).sort((a,b)=>a==='none'?1:b==='none'?-1:a.localeCompare(b));
-  const sortFn=(a,b)=>(dateOf(a)||0)-(dateOf(b)||0);
-  const label=k=>k==='none'?'No date':MN[+k.slice(5)-1]+' '+k.slice(0,4);
-  const C=13;
-  let h='';
-  keys.forEach(k=>{
-    const b=buckets[k]; b.games.sort(sortFn); b.promos.sort(sortFn);
-    h+=`<tr class="mrow"><td colspan="${C}"><span class="in">${label(k)}<span class="cnt">${plural(b.games.length,'game')} · ${plural(b.promos.length,'promo tool')}</span></span></td></tr>`;
-    if(!b.games.length&&!b.promos.length) h+=`<tr class="none"><td colspan="${C}"><span class="in">No releases</span></td></tr>`;
-    h+=b.games.map(row).join('');
-    if(b.promos.length) h+=`<tr class="prow"><td colspan="${C}"><span class="in">Promo tools (${b.promos.length})</span></td></tr>`+b.promos.map(row).join('');
+function updateSyncBadge(){
+  const badge = document.getElementById('syncBadge');
+  const banner = document.getElementById('localBanner');
+  if(ONLINE_MODE){
+    badge.textContent = 'Synced';
+    badge.className = 'badge-pill sync-online';
+    banner.classList.add('hidden');
+  } else {
+    badge.textContent = 'Local only';
+    badge.className = 'badge-pill sync-local';
+    banner.classList.remove('hidden');
+  }
+}
+
+function initSupabase(){
+  if(isSupabaseConfigured()){
+    supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    ONLINE_MODE = true;
+  } else {
+    ONLINE_MODE = false;
+  }
+  updateSyncBadge();
+}
+
+async function loadAllTables(){
+  for(const t of Object.keys(TABLES)){
+    let rows = null;
+    if(ONLINE_MODE){
+      try{
+        const {data, error} = await supa.from(t).select('*').order('created_at', {ascending:true});
+        if(error) throw error;
+        if(data && data.length){
+          rows = data;
+        } else {
+          const seedRows = (SEED[t]||[]).map(r => ({...r, id: crypto.randomUUID()}));
+          if(seedRows.length){
+            const {error: insErr} = await supa.from(t).insert(seedRows);
+            if(insErr) console.warn('Seed insert failed for', t, insErr);
+          }
+          rows = seedRows;
+        }
+      } catch(e){
+        console.warn('Supabase load failed for', t, '- falling back to local', e);
+      }
+    }
+    if(!rows){
+      try{
+        const local = localStorage.getItem('gxs_'+t);
+        rows = local ? JSON.parse(local) : null;
+      } catch(e){
+        console.warn('Corrupt local data for', t, '- reseeding', e);
+        rows = null;
+      }
+      if(!rows) rows = (SEED[t]||[]).map(r => ({...r, id: crypto.randomUUID()}));
+    }
+    state[t] = rows;
+    if(t === 'release_calendar'){
+      rows.forEach((r,i)=>{ if(r.sort_order===undefined || r.sort_order===null) r.sort_order = i; });
+      rows.sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
+    }
+    try{ localStorage.setItem('gxs_'+t, JSON.stringify(rows)); } catch(e){ console.warn('Could not persist locally', t, e); }
+  }
+}
+
+function persistLocal(table){
+  try{ localStorage.setItem('gxs_'+table, JSON.stringify(state[table])); }
+  catch(e){ console.warn('Could not persist locally', table, e); }
+}
+
+function setupTabs(){
+  document.querySelectorAll('#tabNav button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('#tabNav button').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+    });
   });
-  document.getElementById('body').innerHTML=h;
 }
 
-document.getElementById('q').oninput=render;
-document.getElementById('fq').onchange=render;
-document.getElementById('fs').onchange=render;
-document.getElementById('clear').onclick=()=>{q.value='';fq.value='Q2';fs.value='All Stages';render()};
-render();
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function formatDateNice(iso){
+  const d = new Date(iso+'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function badgeSpan(text, colorPair){
+  if(!text) return '';
+  const style = colorPair ? `background:var(${colorPair[0]});color:var(${colorPair[1]});` : 'background:#EEF2F8;color:var(--navy);';
+  return `<span class="badge" style="${style}">${escapeHtml(text)}</span>`;
+}
+
+function renderAll(){
+  Object.keys(TABLES).forEach(t=>{
+    try{ renderTable(t); } catch(e){ reportError('Failed to render ' + t + ': ' + (e.message||e)); }
+  });
+  try{ renderDashboard(); } catch(e){ reportError('Failed to render dashboard: ' + (e.message||e)); }
+  try{ renderGTM(); } catch(e){ reportError('Failed to render Go-to-Market view: ' + (e.message||e)); }
+}
+
+const CALENDAR_SORTABLE_KEYS = ['quarter','game_name','stage','product_type','planned_production_date','toto_live_date','albatros_live_date','pre_release_window','planned_global_launch'];
+
+/* Columns pinned to the left edge of the Release Calendar table while the
+   rest of the table scrolls horizontally underneath. Must be a contiguous
+   run starting from the first data column (Quarter, then Game Name, then
+   Stage) so the sticky "left" offsets stack correctly. */
+const CALENDAR_FROZEN_KEYS = ['quarter','game_name','stage'];
+
+/* Computes the pixel "left" offset each frozen column/cell needs so they
+   stack next to each other (and after the drag-handle column, when present)
+   regardless of the user's current column widths. Recomputed on every
+   render and on every column-resize tick so widths always stay in sync. */
+function frozenLeftOffsets(cfg){
+  const offsets = { __drag: 0 };
+  let cursor = EDIT_MODE ? 26 : 0;
+  cfg.columns.forEach(col=>{
+    if(CALENDAR_FROZEN_KEYS.includes(col.key)){
+      offsets[col.key] = cursor;
+      cursor += colWidthFor(col);
+    }
+  });
+  return offsets;
+}
+
+function applyFrozenOffsets(){
+  const cfg = TABLES.release_calendar;
+  const offsets = frozenLeftOffsets(cfg);
+  document.querySelectorAll('#table-release_calendar [data-frozen-key]').forEach(el=>{
+    const left = offsets[el.dataset.frozenKey];
+    if(left !== undefined) el.style.left = left + 'px';
+  });
+}
+
+function renderTable(table, filterOverride){
+  if(table === 'release_calendar'){
+    if(typeof filterOverride === 'string') calendarFilters.text = filterOverride;
+    renderCalendarTable();
+    return;
+  }
+  if(table === 'schedule_tickets'){
+    renderSchedule();
+    return;
+  }
+  if(table === 'pre_release'){
+    if(typeof filterOverride === 'string') prereleaseFilter.text = filterOverride;
+    renderPrerelease();
+    return;
+  }
+  const filter = (filterOverride||'').toLowerCase();
+  const cfg = TABLES[table];
+  const headRow = document.getElementById('head-'+table);
+  headRow.innerHTML = cfg.columns.map(c=>`<th style="min-width:${c.w}px">${c.label}</th>`).join('') + (EDIT_MODE ? '<th style="width:40px"></th>' : '');
+
+  const body = document.getElementById('body-'+table);
+  body.innerHTML = '';
+  const rows = state[table] || [];
+  rows.forEach(row=>{
+    if(filter){
+      const hay = cfg.columns.map(c=>String(row[c.key]||'')).join(' ').toLowerCase();
+      if(!hay.includes(filter)) return;
+    }
+    body.appendChild(renderRow(table, cfg, row));
+  });
+}
+
+function populateCalendarFilterOptions(){
+  const qSel = document.getElementById('calFilterQuarter');
+  const sSel = document.getElementById('calFilterStage');
+  const tSel = document.getElementById('calFilterType');
+  if(!qSel || !sSel || !tSel) return;
+  LISTS.quarter.forEach(q=>{ const o=document.createElement('option'); o.value=q; o.textContent=q; qSel.appendChild(o); });
+  LISTS.stage.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sSel.appendChild(o); });
+  LISTS.product_type.forEach(t=>{ const o=document.createElement('option'); o.value=t; o.textContent=t; tSel.appendChild(o); });
+}
+
+function clearCalendarFilters(){
+  calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
+  const searchEl = document.getElementById('calendarSearchInput');
+  if(searchEl) searchEl.value = '';
+  ['calFilterQuarter','calFilterStage','calFilterType'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.value = 'All';
+  });
+  renderTable('release_calendar');
+}
+
+function loadCalendarColWidths(){
+  try{
+    const saved = JSON.parse(localStorage.getItem('gxs_calendar_colwidths') || 'null');
+    calendarColWidths = saved || {};
+  } catch(e){ calendarColWidths = {}; }
+}
+function saveCalendarColWidths(){
+  try{ localStorage.setItem('gxs_calendar_colwidths', JSON.stringify(calendarColWidths)); }
+  catch(e){ console.warn('Could not persist column widths', e); }
+}
+function resetCalendarColumnWidths(){
+  calendarColWidths = {};
+  saveCalendarColWidths();
+  renderCalendarTable();
+}
+function colWidthFor(col){
+  return calendarColWidths[col.key] || col.w;
+}
+
+function buildCalendarColgroup(cfg){
+  const colgroup = document.getElementById('colgroup-release_calendar');
+  if(!colgroup) return;
+  let html = '';
+  if(EDIT_MODE) html += `<col style="width:26px">`;
+  cfg.columns.filter(c=>!c.hideInCalendar).forEach(c=>{
+    html += `<col data-key="${c.key}" style="width:${colWidthFor(c)}px">`;
+  });
+  if(EDIT_MODE) html += `<col style="width:40px">`;
+  colgroup.innerHTML = html;
+}
+
+let colResizeState = null;
+function startColResize(e, key){
+  const colEl = document.querySelector(`#colgroup-release_calendar col[data-key="${key}"]`);
+  if(!colEl) return;
+  colResizeState = {
+    key,
+    startX: e.clientX,
+    startWidth: colEl.getBoundingClientRect().width
+  };
+  document.body.style.cursor = 'col-resize';
+  document.body.style.userSelect = 'none';
+  document.addEventListener('mousemove', onColResizeMove);
+  document.addEventListener('mouseup', onColResizeEnd);
+}
+function onColResizeMove(e){
+  if(!colResizeState) return;
+  const delta = e.clientX - colResizeState.startX;
+  const newWidth = Math.max(50, Math.round(colResizeState.startWidth + delta));
+  const colEl = document.querySelector(`#colgroup-release_calendar col[data-key="${colResizeState.key}"]`);
+  if(colEl) colEl.style.width = newWidth + 'px';
+  calendarColWidths[colResizeState.key] = newWidth;
+  applyFrozenOffsets();
+}
+function onColResizeEnd(){
+  if(!colResizeState) return;
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  document.removeEventListener('mousemove', onColResizeMove);
+  document.removeEventListener('mouseup', onColResizeEnd);
+  colResizeState = null;
+  saveCalendarColWidths();
+  applyFrozenOffsets();
+}
+
+function calendarDragEnabled(){
+  return EDIT_MODE && !calendarSort.key &&
+    calendarFilters.quarter==='All' && calendarFilters.stage==='All' &&
+    calendarFilters.product_type==='All' && !calendarFilters.text;
+}
+
+function updateCalendarDragHint(){
+  const hint = document.getElementById('calendarDragHint');
+  if(!hint) return;
+  hint.textContent = calendarDragEnabled()
+    ? '↕ Drag rows by the ⠿ handle to reorder them.'
+    : 'Clear sorting and filters to drag-reorder rows.';
+}
+
+function sortCalendarRows(rows){
+  if(!calendarSort.key) return rows;
+  const key = calendarSort.key;
+  const dir = calendarSort.dir === 'desc' ? -1 : 1;
+  const dateKeys = ['planned_production_date','toto_live_date','albatros_live_date','pre_release_window','planned_global_launch'];
+  return [...rows].sort((a,b)=>{
+    let av = a[key], bv = b[key];
+    if(dateKeys.includes(key)){
+      const ad = av ? new Date(av) : null, bd = bv ? new Date(bv) : null;
+      const at = ad && !isNaN(ad) ? ad.getTime() : (dir===1 ? Infinity : -Infinity);
+      const bt = bd && !isNaN(bd) ? bd.getTime() : (dir===1 ? Infinity : -Infinity);
+      return (at - bt) * dir;
+    }
+    av = (av===null||av===undefined) ? '' : String(av);
+    bv = (bv===null||bv===undefined) ? '' : String(bv);
+    return av.localeCompare(bv, undefined, {numeric:true, sensitivity:'base'}) * dir;
+  });
+}
+
+function renderCalendarTable(){
+  const table = 'release_calendar';
+  const cfg = TABLES[table];
+  const headRow = document.getElementById('head-'+table);
+  const text = (calendarFilters.text||'').toLowerCase();
+
+  buildCalendarColgroup(cfg);
+
+  const leadTh = EDIT_MODE ? '<th style="width:26px" data-frozen-key="__drag"></th>' : '';
+  const trailTh = EDIT_MODE ? '<th style="width:40px"></th>' : '';
+
+  headRow.innerHTML = leadTh + cfg.columns.filter(c=>!c.hideInCalendar).map(c=>{
+    const sortable = CALENDAR_SORTABLE_KEYS.includes(c.key);
+    let arrow = '';
+    if(sortable && calendarSort.key===c.key) arrow = `<span class="sort-arrow">${calendarSort.dir==='asc'?'▲':'▼'}</span>`;
+    const isFrozen = CALENDAR_FROZEN_KEYS.includes(c.key);
+    const isLastFrozen = isFrozen && CALENDAR_FROZEN_KEYS[CALENDAR_FROZEN_KEYS.length-1]===c.key;
+    const frozenAttr = isFrozen ? ` data-frozen-key="${c.key}"` : '';
+    const lastAttr = isLastFrozen ? ' data-frozen-last' : '';
+    return `<th class="${sortable?'sortable':''}" data-key="${c.key}"${frozenAttr}${lastAttr} style="border-right:1px solid rgba(255,255,255,.25)">${c.label}${arrow}<span class="col-resize-handle" data-key="${c.key}"></span></th>`;
+  }).join('') + trailTh;
+
+  headRow.querySelectorAll('th.sortable').forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.key;
+      if(calendarSort.key === key){
+        calendarSort.dir = calendarSort.dir==='asc' ? 'desc' : 'asc';
+      } else {
+        calendarSort.key = key;
+        calendarSort.dir = 'asc';
+      }
+      renderCalendarTable();
+    });
+  });
+
+  headRow.querySelectorAll('.col-resize-handle').forEach(handle=>{
+    handle.addEventListener('mousedown', e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      startColResize(e, handle.dataset.key);
+    });
+    handle.addEventListener('click', e=>{ e.stopPropagation(); });
+  });
+
+  const body = document.getElementById('body-'+table);
+  body.innerHTML = '';
+
+  let rows = (state[table]||[]).filter(row=>{
+    if(text){
+      const hay = cfg.columns.map(c=>String(row[c.key]||'')).join(' ').toLowerCase();
+      if(!hay.includes(text)) return false;
+    }
+    if(calendarFilters.quarter!=='All' && row.quarter!==calendarFilters.quarter) return false;
+    if(calendarFilters.stage!=='All' && row.stage!==calendarFilters.stage) return false;
+    if(calendarFilters.product_type!=='All' && row.product_type!==calendarFilters.product_type) return false;
+    return true;
+  });
+
+  rows = sortCalendarRows(rows);
+
+  const dragEnabled = calendarDragEnabled();
+  updateCalendarDragHint();
+
+  rows.forEach(row=>{
+    body.appendChild(renderCalendarRow(cfg, row, dragEnabled));
+  });
+
+  applyFrozenOffsets();
+}
+
+function renderCalendarRow(cfg, row, dragEnabled){
+  const tr = document.createElement('tr');
+  tr.dataset.id = row.id;
+
+  if(EDIT_MODE){
+    const dragTd = document.createElement('td');
+    dragTd.className = 'rowdrag';
+    dragTd.textContent = '⠿';
+    dragTd.dataset.frozenKey = '__drag';
+    dragTd.style.backgroundColor = '#FAFBFC';
+    tr.appendChild(dragTd);
+  }
+
+  cfg.columns.filter(col=>!col.hideInCalendar).forEach((col, i)=>{
+    const td = document.createElement('td');
+    if(col.type==='number') td.classList.add('col-num');
+    td.style.backgroundColor = (i % 2 === 0) ? 'var(--col-band-light)' : 'var(--col-band-dark)';
+    td.style.borderRight = '1px solid var(--col-sep)';
+    if(CALENDAR_FROZEN_KEYS.includes(col.key)){
+      td.dataset.frozenKey = col.key;
+      if(CALENDAR_FROZEN_KEYS[CALENDAR_FROZEN_KEYS.length-1]===col.key){
+        td.dataset.frozenLast = '';
+      }
+    }
+    td.appendChild(makeField('release_calendar', row, col, 'table'));
+    tr.appendChild(td);
+  });
+
+  if(EDIT_MODE){
+    const delTd = document.createElement('td');
+    delTd.className = 'rowdel';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn danger';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete row';
+    delBtn.onclick = ()=>deleteRow('release_calendar', row.id);
+    delTd.appendChild(delBtn);
+    tr.appendChild(delTd);
+  }
+
+  if(dragEnabled){
+    tr.draggable = true;
+    tr.addEventListener('dragstart', e=>{
+      draggedCalendarRowId = row.id;
+      tr.classList.add('dragging');
+      if(e.dataTransfer){ e.dataTransfer.effectAllowed = 'move'; try{ e.dataTransfer.setData('text/plain', row.id); }catch(err){} }
+    });
+    tr.addEventListener('dragend', ()=>{
+      tr.classList.remove('dragging');
+      document.querySelectorAll('#body-release_calendar tr').forEach(r=>r.classList.remove('drag-over-top','drag-over-bottom'));
+      draggedCalendarRowId = null;
+    });
+    tr.addEventListener('dragover', e=>{
+      e.preventDefault();
+      if(!draggedCalendarRowId || draggedCalendarRowId===row.id) return;
+      const rect = tr.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      tr.classList.toggle('drag-over-top', before);
+      tr.classList.toggle('drag-over-bottom', !before);
+    });
+    tr.addEventListener('dragleave', ()=>{
+      tr.classList.remove('drag-over-top','drag-over-bottom');
+    });
+    tr.addEventListener('drop', e=>{
+      e.preventDefault();
+      tr.classList.remove('drag-over-top','drag-over-bottom');
+      if(!draggedCalendarRowId || draggedCalendarRowId===row.id) return;
+      const rect = tr.getBoundingClientRect();
+      const before = (e.clientY - rect.top) < rect.height/2;
+      reorderCalendarRows(draggedCalendarRowId, row.id, before);
+      draggedCalendarRowId = null;
+    });
+  }
+
+  return tr;
+}
+
+function reorderCalendarRows(draggedId, targetId, insertBefore){
+  const rows = state.release_calendar;
+  const fromIdx = rows.findIndex(r=>r.id===draggedId);
+  if(fromIdx===-1) return;
+  const [moved] = rows.splice(fromIdx,1);
+  let toIdx = rows.findIndex(r=>r.id===targetId);
+  if(toIdx===-1){ rows.splice(fromIdx,0,moved); return; }
+  const insertAt = insertBefore ? toIdx : toIdx+1;
+  rows.splice(insertAt,0,moved);
+
+  rows.forEach((r,i)=>{ r.sort_order = i; });
+  persistLocal('release_calendar');
+  renderCalendarTable();
+  renderGTM();
+  if(ONLINE_MODE){
+    Promise.all(rows.map(r=>supa.from('release_calendar').update({sort_order:r.sort_order}).eq('id', r.id)))
+      .catch(e=>console.warn('Could not sync new row order to Supabase (does the sort_order column exist yet?):', e));
+  }
+}
+
+function renderRow(table, cfg, row){
+  const tr = document.createElement('tr');
+  tr.dataset.id = row.id;
+  cfg.columns.filter(col=>!col.excludeFromGroupTable).forEach(col=>{
+    const td = document.createElement('td');
+    if(col.type==='number') td.classList.add('col-num');
+    td.appendChild(makeField(table, row, col, 'table'));
+    tr.appendChild(td);
+  });
+  if(EDIT_MODE){
+    const delTd = document.createElement('td');
+    delTd.className = 'rowdel';
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn danger';
+    delBtn.textContent = '✕';
+    delBtn.title = 'Delete row';
+    delBtn.onclick = ()=>deleteRow(table, row.id);
+    delTd.appendChild(delBtn);
+    tr.appendChild(delTd);
+  }
+  return tr;
+}
+
+/* ---------- Pre-Release Tracker: grouped-by-game accordion ----------
+   Instead of one long flat table, entries are grouped by their Game
+   value into collapsible sections (one per game) so a game with many
+   partner rollouts doesn't push everything else off-screen. Each
+   section can be expanded/collapsed independently; searching
+   auto-expands any group with a match. */
+
+function renderPrerelease(){
+  const container = document.getElementById('prereleaseAccordion');
+  const emptyNote = document.getElementById('prereleaseEmpty');
+  if(!container) return;
+  container.innerHTML = '';
+
+  const cfg = TABLES.pre_release;
+  const search = (prereleaseFilter.text||'').toLowerCase();
+  const rows = state.pre_release || [];
+
+  const groups = new Map();
+  rows.forEach(row=>{
+    if(search){
+      const hay = cfg.columns.map(c=>String(row[c.key]||'')).join(' ').toLowerCase();
+      if(!hay.includes(search)) return;
+    }
+    const label = (row.game && row.game.trim()) ? row.game.trim() : PRERELEASE_NO_GAME_LABEL;
+    if(!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(row);
+  });
+
+  const gameLabels = Array.from(groups.keys()).sort((a,b)=>{
+    if(a===PRERELEASE_NO_GAME_LABEL) return -1;
+    if(b===PRERELEASE_NO_GAME_LABEL) return 1;
+    return a.localeCompare(b);
+  });
+
+  gameLabels.forEach(label=>{
+    container.appendChild(renderPrereleaseGameGroup(label, groups.get(label), !!search));
+  });
+
+  emptyNote.classList.toggle('hidden', gameLabels.length>0);
+}
+
+function renderPrereleaseGameGroup(label, rows, forceOpen){
+  const isOpen = forceOpen || openPrereleaseGames.has(label);
+
+  const group = document.createElement('div');
+  group.className = 'prerelease-group';
+
+  const header = document.createElement('div');
+  header.className = 'prerelease-group-header';
+  header.innerHTML = `<span class="chev">${isOpen ? '▾' : '▸'}</span><span class="pg-name">${escapeHtml(label)}</span><span class="pg-count">${rows.length}</span>`;
+  header.addEventListener('click', ()=>{
+    if(openPrereleaseGames.has(label)) openPrereleaseGames.delete(label); else openPrereleaseGames.add(label);
+    renderPrerelease();
+  });
+  group.appendChild(header);
+
+  if(isOpen){
+    const body = document.createElement('div');
+    body.className = 'prerelease-group-body';
+
+    /* Split this game's rows into the two sections. Anything without a
+       section set yet (older rows) defaults to Pre-Release Positions so
+       nothing existing silently disappears. */
+    PRERELEASE_SECTIONS.forEach(section=>{
+      const sectionRows = rows.filter(r => (r.section || PRERELEASE_SECTIONS[0]) === section);
+      body.appendChild(renderPrereleaseSection(label, section, sectionRows));
+    });
+
+    group.appendChild(body);
+  }
+
+  return group;
+}
+
+/* One colored sub-section (Pre-Release Positions or Best Positions) inside
+   an expanded game group, each with its own table and its own "+ Add" button
+   that pre-fills the section so new rows land in the right place. */
+function renderPrereleaseSection(gameLabel, section, rows){
+  const cfg = TABLES.pre_release;
+  const colorKey = section === 'Best Positions' ? 'best' : 'prerelease';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'prerelease-section prerelease-section-' + colorKey;
+
+  const head = document.createElement('div');
+  head.className = 'prerelease-section-head';
+  head.innerHTML = `<span class="prerelease-section-dot"></span><span class="prerelease-section-title">${escapeHtml(section)}</span><span class="prerelease-section-count">${rows.length}</span>`;
+  wrap.appendChild(head);
+
+  const tableWrap = document.createElement('div');
+  tableWrap.className = 'table-wrap';
+  const table = document.createElement('table');
+  const thead = document.createElement('thead');
+  const headRow = document.createElement('tr');
+  const visibleColumns = cfg.columns.filter(c=>!c.excludeFromGroupTable);
+  headRow.innerHTML = visibleColumns.map(c=>`<th style="min-width:${c.w}px">${c.label}</th>`).join('') + (EDIT_MODE ? '<th style="width:40px"></th>' : '');
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+  const tbody = document.createElement('tbody');
+  if(!rows.length){
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = visibleColumns.length + (EDIT_MODE ? 1 : 0);
+    td.className = 'ticket-empty';
+    td.textContent = 'No rows yet.';
+    tr.appendChild(td);
+    tbody.appendChild(tr);
+  } else {
+    rows.forEach(row=>tbody.appendChild(renderRow('pre_release', cfg, row)));
+  }
+  table.appendChild(tbody);
+  tableWrap.appendChild(table);
+  wrap.appendChild(tableWrap);
+
+  if(EDIT_MODE){
+    const addBtn = document.createElement('button');
+    addBtn.className = 'prerelease-add-btn prerelease-add-btn-' + colorKey;
+    addBtn.textContent = '+ Add ' + section.replace(' Positions','') + ' Row';
+    addBtn.onclick = ()=>addPrereleaseRow(gameLabel===PRERELEASE_NO_GAME_LABEL ? '' : gameLabel, section);
+    wrap.appendChild(addBtn);
+  }
+
+  return wrap;
+}
+
+function expandAllPrereleaseGroups(){
+  const rows = state.pre_release || [];
+  rows.forEach(row=>{
+    openPrereleaseGames.add((row.game && row.game.trim()) ? row.game.trim() : PRERELEASE_NO_GAME_LABEL);
+  });
+  renderPrerelease();
+}
+function collapseAllPrereleaseGroups(){
+  openPrereleaseGames.clear();
+  renderPrerelease();
+}
+
+async function addPrereleaseRow(game, section){
+  const blank = {id: crypto.randomUUID()};
+  TABLES.pre_release.columns.forEach(c=>blank[c.key]=null);
+  blank.game = game || null;
+  blank.section = section || PRERELEASE_SECTIONS[0];
+  state.pre_release.push(blank);
+  openPrereleaseGames.add(game && game.trim() ? game.trim() : PRERELEASE_NO_GAME_LABEL);
+  persistLocal('pre_release');
+  renderPrerelease();
+  if(ONLINE_MODE){
+    const {error} = await supa.from('pre_release').insert(blank);
+    if(error) console.warn('Insert failed', 'pre_release', error);
+  }
+  return blank;
+}
+
+/* "+ Add Game" — lets the user type a brand-new game name straight into
+   the Pre-Release Tracker and creates its own group with a first blank
+   row, even if that game hasn't been added to Release Calendar yet
+   (the Game dropdown on that row will show it as "(not in list)" until
+   it is). If a group with that name already exists, just expands it
+   and adds a fresh row there instead of creating a duplicate group. */
+function promptAddPrereleaseGame(){
+  const input = window.prompt('New game name for the Pre-Release Tracker:');
+  if(input === null) return;
+  const name = input.trim();
+  if(!name) return;
+
+  const rows = state.pre_release || [];
+  const existing = rows.find(r => (r.game||'').trim().toLowerCase() === name.toLowerCase());
+  const finalName = existing ? existing.game.trim() : name;
+
+  addPrereleaseRow(finalName);
+}
+
+function makeField(table, row, col, sourceView){
+  if(!EDIT_MODE) return makeReadOnlyField(row, col);
+  const cellId = table+'::'+row.id+'::'+col.key;
+  let el;
+  if(col.type==='select'){
+    el = document.createElement('select');
+    const blank = document.createElement('option'); blank.value=''; blank.textContent='—';
+    el.appendChild(blank);
+    /* If the column defines dynamicOptions, recompute the list fresh at
+       render time (e.g. pulling live game names from Release Calendar)
+       instead of relying on a fixed options array. */
+    const opts = typeof col.dynamicOptions === 'function' ? col.dynamicOptions() : (col.options || []);
+    opts.forEach(opt=>{
+      const o = document.createElement('option');
+      o.value = opt; o.textContent = opt;
+      if((row[col.key]||'').trim()===opt) o.selected = true;
+      el.appendChild(o);
+    });
+    /* If the row's saved value isn't in the current options list (e.g. a
+       game that was renamed or removed from Release Calendar), keep it
+       visible as its own option so existing data isn't silently hidden. */
+    const currentVal = (row[col.key]||'').trim();
+    if(currentVal && !opts.includes(currentVal)){
+      const o = document.createElement('option');
+      o.value = currentVal; o.textContent = currentVal + ' (not in list)';
+      o.selected = true;
+      el.appendChild(o);
+    }
+    applyBadge(el, col, row[col.key]);
+    el.addEventListener('change', ()=>{ row[col.key]=el.value; applyBadge(el,col,el.value); commit(table,row,sourceView); });
+  } else if(col.type==='bool'){
+    el = document.createElement('select');
+    [['','—'],['true','Yes'],['false','No']].forEach(([v,l])=>{
+      const o=document.createElement('option'); o.value=v; o.textContent=l;
+      const cur = row[col.key];
+      if((cur===true && v==='true')||(cur===false && v==='false')||((cur===null||cur===undefined)&&v==='')) o.selected=true;
+      el.appendChild(o);
+    });
+    applyBoolBadge(el, row[col.key]);
+    el.addEventListener('change', ()=>{
+      row[col.key] = el.value===''? null : el.value==='true';
+      applyBoolBadge(el, row[col.key]);
+      commit(table,row,sourceView);
+    });
+  } else if(col.type==='combo'){
+    el = document.createElement('input');
+    el.type = 'text';
+    el.value = row[col.key] ?? '';
+    if(typeof col.dynamicOptions === 'function'){
+      const listId = 'datalist_' + table + '_' + col.key;
+      let datalist = document.getElementById(listId);
+      if(!datalist){
+        datalist = document.createElement('datalist');
+        datalist.id = listId;
+        document.body.appendChild(datalist);
+      }
+      datalist.innerHTML = col.dynamicOptions().map(opt=>`<option value="${escapeHtml(opt)}">`).join('');
+      el.setAttribute('list', listId);
+    }
+    bindTextCommit(el, cellId, table, row, col, null, sourceView);
+  } else if(col.type==='textarea'){
+    el = document.createElement('textarea');
+    el.rows = 1;
+    el.value = row[col.key] ?? '';
+    bindTextCommit(el, cellId, table, row, col, null, sourceView);
+  } else if(col.type==='date'){
+    el = document.createElement('input');
+    el.type = 'date';
+    el.value = row[col.key] ?? '';
+    if(col.bold) el.style.fontWeight = '700';
+    if(!el.value) el.classList.add('date-empty');
+    el.addEventListener('change', ()=>{
+      row[col.key]=el.value||null;
+      el.classList.toggle('date-empty', !el.value);
+      commit(table,row,sourceView);
+    });
+  } else if(col.type==='number'){
+    el = document.createElement('input');
+    el.type = 'number';
+    el.value = (row[col.key]===null||row[col.key]===undefined) ? '' : row[col.key];
+    bindTextCommit(el, cellId, table, row, col, v=>v===''?null:Number(v), sourceView);
+  } else {
+    el = document.createElement('input');
+    el.type = 'text';
+    el.value = row[col.key] ?? '';
+    bindTextCommit(el, cellId, table, row, col, null, sourceView);
+  }
+  return el;
+}
+
+function makeReadOnlyField(row, col){
+  const div = document.createElement('div');
+  div.className = 'ro-field';
+  const val = row[col.key];
+  if(col.type==='bool'){
+    div.textContent = val===true ? 'Yes' : (val===false ? 'No' : '—');
+    if(val===true){ div.style.color='var(--green-fg)'; div.style.fontWeight='700'; }
+    if(val===false){ div.style.color='var(--red-fg)'; div.style.fontWeight='700'; }
+  } else if(col.type==='select'){
+    const v = val ? String(val).trim() : '';
+    div.textContent = v || '—';
+    if(col.badge && v && col.badge[v]){
+      const [bg,fg] = col.badge[v];
+      div.style.cssText = `display:inline-block;background:var(${bg});color:var(${fg});padding:4px 10px;border-radius:20px;font-weight:700;font-size:11.5px;`;
+    }
+  } else if(col.type==='date'){
+    div.textContent = val ? formatDateNice(val) : '—';
+    if(col.bold && val) div.style.fontWeight = '700';
+    if(!val) div.classList.add('date-empty');
+  } else {
+    const text = (val===null||val===undefined||val==='') ? '—' : String(val);
+    if(/^https?:\/\//i.test(text)){
+      const a = document.createElement('a'); a.href=text; a.target='_blank'; a.rel='noopener'; a.textContent=text;
+      div.appendChild(a);
+    } else {
+      div.textContent = text;
+      if(col.type==='textarea') div.style.whiteSpace = 'pre-wrap';
+    }
+  }
+  return div;
+}
+
+function bindTextCommit(el, cellId, table, row, col, transform, sourceView){
+  el.addEventListener('focus', ()=>editingCells.add(cellId));
+  el.addEventListener('blur', ()=>{
+    editingCells.delete(cellId);
+    row[col.key] = transform ? transform(el.value) : (el.value===''? null : el.value);
+    commit(table, row, sourceView);
+  });
+}
+
+function applyBadge(selectEl, col, value){
+  selectEl.removeAttribute('style');
+  const v = value && value.trim ? value.trim() : value;
+  if(col.badge && v && col.badge[v]){
+    const [bgVar,fgVar] = col.badge[v];
+    selectEl.style.background = `var(${bgVar})`;
+    selectEl.style.color = `var(${fgVar})`;
+    selectEl.style.fontWeight = '700';
+    selectEl.style.borderRadius = '20px';
+  }
+}
+function applyBoolBadge(selectEl, value){
+  selectEl.removeAttribute('style');
+  if(value===true){ selectEl.style.background='var(--green-bg)'; selectEl.style.color='var(--green-fg)'; selectEl.style.fontWeight='700'; }
+  else if(value===false){ selectEl.style.background='var(--red-bg)'; selectEl.style.color='var(--red-fg)'; selectEl.style.fontWeight='700'; }
+}
+
+/* Keeps the Release Schedule board in sync with a game's Planned Global
+   Launch date from the Release Calendar. As soon as that date is set (or
+   changed), this either creates a new sticker in the matching month or,
+   if a sticker for this game already exists (matched by game name), moves
+   it to the right month/date instead of creating a duplicate. Matching is
+   by name rather than a stored link so it works without any extra
+   Supabase column — rename the game in both places if you ever need to
+   re-link them. */
+function syncScheduleStickerForGame(row, opts){
+  opts = opts || {};
+  const gameName = (row && row.game_name || '').trim();
+  if(!gameName) return;
+  const dateVal = (row && row.planned_global_launch || '').trim();
+  const tickets = state.schedule_tickets || [];
+  const existing = tickets.find(t => (t.game_name||'').trim().toLowerCase() === gameName.toLowerCase());
+
+  /* Global Launch date was cleared on the calendar — clear the sticker's
+     date too, but keep the sticker (and its month/notes) in place rather
+     than deleting it. */
+  if(!dateVal){
+    if(existing && (existing.release_date||'').trim()){
+      existing.release_date = null;
+      persistLocal('schedule_tickets');
+      if(!opts.silent) renderSchedule();
+      if(ONLINE_MODE){
+        supa.from('schedule_tickets').update({release_date: null}).eq('id', existing.id)
+          .then(({error})=>{ if(error) console.warn('Could not clear schedule sticker date', error); });
+      }
+    }
+    return;
+  }
+
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return;
+  const d = new Date(dateVal+'T00:00:00');
+  if(isNaN(d)) return;
+  const month = MONTHS[d.getMonth()];
+
+  /* Calendar always wins: if the sticker's date/month has drifted from the
+     calendar (whether from a manual edit or nothing set yet), this brings
+     it back in line rather than leaving the manual edit in place. */
+  if(existing){
+    if(existing.release_date === dateVal && existing.month === month) return;
+    existing.release_date = dateVal;
+    existing.month = month;
+    persistLocal('schedule_tickets');
+    if(!opts.silent) renderSchedule();
+    if(ONLINE_MODE){
+      supa.from('schedule_tickets').update({release_date: dateVal, month}).eq('id', existing.id)
+        .then(({error})=>{ if(error) console.warn('Could not sync schedule sticker', error); });
+    }
+  } else {
+    const blank = { id: crypto.randomUUID(), month, game_name: gameName, release_date: dateVal, notes: '', notes_html: '', width: null, height: null };
+    state.schedule_tickets.push(blank);
+    persistLocal('schedule_tickets');
+    if(!opts.silent) renderSchedule();
+    if(ONLINE_MODE){
+      supa.from('schedule_tickets').insert(blank).then(({error})=>{ if(error) console.warn('Could not auto-create schedule sticker', error); });
+    }
+  }
+}
+
+/* One-time (and safe to re-run) backfill: walks every game currently in
+   the Release Calendar and makes sure each one with a Global Launch date
+   has a matching Release Schedule sticker, creating any that are missing.
+   Runs automatically at boot so existing games get their stickers without
+   needing to re-save each row by hand; idempotent, so it's harmless to run
+   again on every page load. */
+function backfillScheduleStickersFromCalendar(){
+  (state.release_calendar || []).forEach(row => syncScheduleStickerForGame(row, {silent:true}));
+  renderSchedule();
+}
+
+async function commit(table, row, sourceView){
+  persistLocal(table);
+  renderDashboard();
+  if(table==='release_calendar'){
+    if(sourceView !== 'gtm') renderGTM();
+    if(sourceView !== 'table') renderTable('release_calendar');
+    /* Game names may have changed — refresh the Pre-Release Tracker's
+       Game dropdown so it stays in sync with Release Calendar. */
+    renderTable('pre_release');
+    /* Auto-create/update the matching Release Schedule sticker whenever
+       the Planned Global Launch date (or the game name) changes. */
+    syncScheduleStickerForGame(row);
+  }
+  if(table==='schedule_tickets'){
+    /* Ticket edits (name/month/notes) are saved directly via saveTicketField
+       below without a full re-render, so we don't call renderSchedule()
+       here — doing so would rebuild the DOM mid-edit and drop focus/cursor
+       position inside the rich-text note or destroy an in-progress resize. */
+  }
+  if(!ONLINE_MODE) return;
+  /* IMPORTANT: .select() is added here so we get back the row(s) that were
+     actually updated. Without it, Supabase's update() call returns no error
+     even when zero rows were affected (e.g. a Row-Level Security policy on
+     this table silently blocks the UPDATE for this key). That "successful
+     no-op" is exactly what was causing edits like Demo Link to appear saved
+     in the browser (local state + localStorage were updated) while never
+     actually reaching the shared database — so the value vanished the next
+     time the page loaded fresh data from Supabase. */
+  const {data, error} = await supa.from(table).update(row).eq('id', row.id).select();
+  if(error){
+    console.warn('Update failed', table, error);
+    reportError(`Could not save this change to "${TABLES[table]?.label || table}" in the shared database: ${error.message}. Your edit is only stored in this browser for now.`);
+  } else if(!data || data.length === 0){
+    console.warn('Update affected 0 rows — likely blocked by a Supabase Row-Level Security (RLS) policy', table, row.id);
+    reportError(`Your change to "${row.game_name || row.id}" was NOT saved to the shared database (0 rows updated — this usually means a Row-Level Security policy on the "${table}" table is blocking updates). It will disappear on refresh unless an admin fixes the UPDATE policy in Supabase.`);
+  }
+}
+
+async function addRow(table){
+  const blank = {id: crypto.randomUUID()};
+  TABLES[table].columns.forEach(c=>blank[c.key]=null);
+  if(table==='release_calendar') blank.sort_order = state[table].length;
+  state[table].push(blank);
+  if(table==='pre_release') openPrereleaseGames.add(PRERELEASE_NO_GAME_LABEL);
+  renderTable(table);
+  persistLocal(table);
+  if(table==='release_calendar'){
+    renderGTM();
+    renderTable('pre_release');
+  }
+  renderDashboard();
+  if(ONLINE_MODE){
+    const {data, error} = await supa.from(table).insert(blank).select();
+    if(error){
+      console.warn('Insert failed', table, error);
+      reportError(`Could not save the new row to "${TABLES[table]?.label || table}" in the shared database: ${error.message}. It only exists in this browser for now.`);
+    } else if(!data || data.length === 0){
+      console.warn('Insert affected 0 rows — likely blocked by a Supabase Row-Level Security (RLS) policy', table);
+      reportError(`The new row was NOT saved to the shared database (likely blocked by a Row-Level Security policy on "${table}"). It will disappear on refresh unless an admin fixes the INSERT policy in Supabase.`);
+    }
+  }
+  return blank;
+}
+
+function addGtmGame(){
+  addRow('release_calendar').then(newest=>{
+    openGtmCards.add(newest.id);
+    document.querySelector('#tabNav button[data-tab="gtm"]').click();
+    renderGTM();
+  });
+}
+
+async function deleteRow(table, id){
+  if(!confirm('Delete this row?')) return;
+  state[table] = state[table].filter(r=>r.id!==id);
+  renderTable(table);
+  persistLocal(table);
+  renderDashboard();
+  if(table==='release_calendar'){
+    openGtmCards.delete(id);
+    renderGTM();
+    renderTable('pre_release');
+  }
+  if(ONLINE_MODE){
+    const {error} = await supa.from(table).delete().eq('id', id);
+    if(error) console.warn('Delete failed', table, error);
+  }
+}
+
+function subscribeRealtime(){
+  Object.keys(TABLES).forEach(table=>{
+    supa.channel(table+'-changes')
+      .on('postgres_changes', {event:'*', schema:'public', table}, payload=>handleRealtime(table,payload))
+      .subscribe();
+  });
+}
+
+function handleRealtime(table, payload){
+  const rows = state[table];
+  if(payload.eventType==='INSERT'){
+    if(!rows.find(r=>r.id===payload.new.id)) rows.push(payload.new);
+  } else if(payload.eventType==='UPDATE'){
+    const idx = rows.findIndex(r=>r.id===payload.new.id);
+    const anyEditing = Array.from(editingCells).some(k=>k.startsWith(table+'::'+payload.new.id+'::'));
+    if(idx>=0 && !anyEditing) rows[idx] = payload.new;
+  } else if(payload.eventType==='DELETE'){
+    state[table] = rows.filter(r=>r.id!==payload.old.id);
+  }
+  persistLocal(table);
+  renderTable(table);
+  renderDashboard();
+  if(table==='release_calendar'){
+    renderGTM();
+    renderTable('pre_release');
+    if(payload.eventType!=='DELETE') syncScheduleStickerForGame(payload.new);
+  }
+}
+
+function readinessStatus(value){
+  const v = (value||'').toString().trim();
+  if(v==='Ready'||v==='Yes') return {state:'done', text:v};
+  if(v==='In Progress') return {state:'progress', text:v};
+  if(v==='No') return {state:'blocked', text:v};
+  return {state:'pending', text:'Not set'};
+}
+/* Demo Link and Emails aren't readiness dropdowns or dates — they're plain
+   text/URL fields shared with the Release Calendar table. The step just
+   reflects whether something has been filled in yet. */
+function linkStepStatus(value){
+  const v = (value||'').toString().trim();
+  if(!v) return {state:'pending', text:'Not set'};
+  return {state:'done', text:'Ready'};
+}
+function dateStepStatus(value){
+  const v = (value||'').toString().trim();
+  if(!v) return {state:'pending', text:'Not set'};
+  if(v==='-') return {state:'na', text:'N/A'};
+  if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
+    const d = new Date(v+'T00:00:00');
+    const today = new Date(); today.setHours(0,0,0,0);
+    if(d.getTime() < today.getTime()) return {state:'done', text: formatDateNice(v)};
+    if(d.getTime() === today.getTime()) return {state:'progress', text:'Today'};
+    return {state:'scheduled', text: formatDateNice(v)};
+  }
+  return {state:'scheduled', text:v};
+}
+function stepIcon(state){
+  return {done:'✓', scheduled:'●', progress:'●', blocked:'✕', na:'–', pending:'○'}[state] || '○';
+}
+function computeSteps(row){
+  const steps = GTM_STEPS.map(s=>{
+    let st;
+    if(s.kind==='readiness') st = readinessStatus(row[s.key]);
+    else if(s.kind==='link') st = linkStepStatus(row[s.key]);
+    else st = dateStepStatus(row[s.key]);
+    return {...s, ...st};
+  });
+
+  /* Flag Global Launch in red whenever it's scheduled more than 40 days
+     after Planned Production — a long production-to-launch gap is worth
+     calling out regardless of whether the date itself is past, today, or
+     still upcoming. */
+  const prodVal = (row.planned_production_date||'').toString().trim();
+  const launchVal = (row.planned_global_launch||'').toString().trim();
+  if(/^\d{4}-\d{2}-\d{2}$/.test(prodVal) && /^\d{4}-\d{2}-\d{2}$/.test(launchVal)){
+    const prodDate = new Date(prodVal+'T00:00:00');
+    const launchDate = new Date(launchVal+'T00:00:00');
+    const gapDays = Math.round((launchDate - prodDate) / 86400000);
+    if(gapDays > 40){
+      const launchStep = steps.find(s=>s.key==='planned_global_launch');
+      if(launchStep){ launchStep.late = true; launchStep.gapDays = gapDays; }
+    }
+  }
+
+  return steps;
+}
+function computeProgress(steps){
+  const applicable = steps.filter(s=>s.state!=='na');
+  if(!applicable.length) return 0;
+  const done = applicable.filter(s=>s.state==='done').length;
+  return Math.round(done/applicable.length*100);
+}
+
+function buildGtmQuarterChips(){
+  const wrap = document.getElementById('gtmQuarterChips');
+  const opts = ['All', ...LISTS.quarter];
+  wrap.innerHTML = opts.map(q=>`<button class="chip${q==='All'?' active':''}" data-q="${q}">${q}</button>`).join('');
+  wrap.querySelectorAll('.chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      wrap.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+      chip.classList.add('active');
+      gtmFilter.quarter = chip.dataset.q;
+      renderGTM();
+    });
+  });
+}
+
+function renderGTM(){
+  const grid = document.getElementById('gtmGrid');
+  const emptyNote = document.getElementById('gtmEmpty');
+  grid.innerHTML = '';
+  const rows = (state.release_calendar||[]).filter(r=>r.game_name);
+
+  renderGtmSummary(rows);
+
+  const filtered = rows.filter(r=>{
+    if(gtmFilter.quarter!=='All' && r.quarter!==gtmFilter.quarter) return false;
+    if(gtmFilter.search && !String(r.game_name).toLowerCase().includes(gtmFilter.search.toLowerCase())) return false;
+    if(gtmFilter.pendingOnly){
+      const prog = computeProgress(computeSteps(r));
+      if(prog>=100) return false;
+    }
+    return true;
+  });
+
+  emptyNote.classList.toggle('hidden', filtered.length>0);
+
+  /* Promo tools (Product Type = "Promo Tool") don't follow the same
+     assets → Toto → Albatros → push → launch pipeline as a real game, so
+     they're grouped separately at the bottom of the same grid — under a
+     divider and tinted purple — instead of mixed in with game releases. */
+  const games = filtered.filter(r => (r.product_type||'').trim() !== 'Promo Tool');
+  const promoTools = filtered.filter(r => (r.product_type||'').trim() === 'Promo Tool');
+
+  games.forEach(row=>grid.appendChild(renderGtmCard(row)));
+
+  if(promoTools.length){
+    const divider = document.createElement('div');
+    divider.className = 'gtm-promo-divider';
+    divider.innerHTML = `<span>Promo Tools</span><div class="line"></div>`;
+    grid.appendChild(divider);
+    promoTools.forEach(row=>grid.appendChild(renderGtmCard(row)));
+  }
+}
+
+function renderGtmSummary(rows){
+  const total = rows.length;
+  const withProgress = rows.map(r=>computeProgress(computeSteps(r)));
+  const fullyReady = withProgress.filter(p=>p>=100).length;
+  const notStarted = withProgress.filter(p=>p===0).length;
+  const inProgress = total - fullyReady - notStarted;
+  document.getElementById('gtmSummary').innerHTML = `
+    <div class="item"><div class="n">${total}</div><div class="l">Games Tracked</div></div>
+    <div class="item"><div class="n" style="color:var(--green-fg)">${fullyReady}</div><div class="l">Fully Ready</div></div>
+    <div class="item"><div class="n" style="color:var(--yellow-fg)">${inProgress}</div><div class="l">In Progress</div></div>
+    <div class="item"><div class="n" style="color:var(--red-fg)">${notStarted}</div><div class="l">Not Started</div></div>
+  `;
+}
+
+function renderGtmCard(row){
+  const steps = computeSteps(row);
+  const progress = computeProgress(steps);
+  const isLate = steps.some(s=>s.late);
+  const card = document.createElement('div');
+  card.className = 'gtm-card' + ((row.product_type||'').trim()==='Promo Tool' ? ' promo-tool' : '') + (isLate ? ' is-late' : '');
+  card.dataset.id = row.id;
+
+  const head = document.createElement('div');
+  head.className = 'gtm-card-head';
+  head.innerHTML = `
+    <div>
+      <h3>${escapeHtml(row.game_name || 'Untitled game')}</h3>
+      <div class="gtm-meta">${escapeHtml(row.product_owner || 'No owner set')}${row.pm_assigned ? ' · PM: '+escapeHtml(row.pm_assigned) : ''}</div>
+      <div class="gtm-badges">
+        ${badgeSpan(row.quarter, null)}
+        ${badgeSpan(row.product_type, null)}
+        ${row.stage ? badgeSpan(row.stage, STAGE_COLORS[row.stage]) : ''}
+        ${row.exclusive_partner ? badgeSpan(row.exclusive_partner, ['--purple-bg','--purple-fg']) : ''}
+        ${isLate ? badgeSpan('⚠ Late', ['--red-bg','--red-fg']) : ''}
+      </div>
+    </div>
+    <div class="gtm-pct">
+      <div class="num">${progress}%</div>
+      <div class="txt">Ready</div>
+    </div>
+  `;
+  card.appendChild(head);
+
+  const stepper = document.createElement('div');
+  stepper.className = 'stepper';
+  steps.forEach(s=>{
+    const el = document.createElement('div');
+    el.className = 'step ' + s.state + (s.late ? ' late' : '');
+    const icon = s.late ? '⚠' : stepIcon(s.state);
+    const title = s.late ? `${s.text} — ${s.gapDays} days after production (flagged: 40+ day gap)` : s.text;
+    el.innerHTML = `<div class="dot" title="${escapeHtml(title)}">${icon}</div><div class="label">${s.label}</div><div class="value">${escapeHtml(s.text)}</div>`;
+    stepper.appendChild(el);
+  });
+  card.appendChild(stepper);
+
+  const bar = document.createElement('div'); bar.className = 'progress-bar';
+  const fill = document.createElement('div'); fill.className = 'progress-fill'; fill.style.width = progress + '%';
+  bar.appendChild(fill);
+  card.appendChild(bar);
+
+  const footer = document.createElement('div'); footer.className = 'gtm-footer';
+  const notesPreview = document.createElement('div');
+  notesPreview.className = 'gtm-notes-preview';
+  notesPreview.textContent = row.notes ? '📝 ' + row.notes : '';
+  footer.appendChild(notesPreview);
+
+  if(EDIT_MODE){
+    const actions = document.createElement('div');
+    actions.className = 'gtm-actions';
+    const editBtn = document.createElement('button');
+    editBtn.className = 'btn secondary';
+    editBtn.style.padding = '5px 12px';
+    editBtn.textContent = openGtmCards.has(row.id) ? 'Close' : 'Edit';
+    editBtn.onclick = ()=>{
+      if(openGtmCards.has(row.id)) openGtmCards.delete(row.id); else openGtmCards.add(row.id);
+      renderGTM();
+    };
+    const delBtn = document.createElement('button');
+    delBtn.className = 'btn danger';
+    delBtn.textContent = '✕';
+    delBtn.onclick = ()=>deleteRow('release_calendar', row.id);
+    actions.appendChild(editBtn);
+    actions.appendChild(delBtn);
+    footer.appendChild(actions);
+  }
+  card.appendChild(footer);
+
+  if(EDIT_MODE && openGtmCards.has(row.id)){
+    const panel = document.createElement('div');
+    panel.className = 'gtm-edit-panel open';
+    TABLES.release_calendar.columns.filter(c=>GTM_EDIT_KEYS.includes(c.key)).forEach(col=>{
+      const block = document.createElement('div');
+      block.className = 'field-block' + (col.key==='notes' ? ' full' : '');
+      const lbl = document.createElement('label');
+      lbl.textContent = col.label;
+      block.appendChild(lbl);
+      block.appendChild(makeField('release_calendar', row, col, 'gtm'));
+      panel.appendChild(block);
+    });
+    card.appendChild(panel);
+  }
+
+  return card;
+}
+
+function renderScheduleSidebar(){
+  const el = document.getElementById('scheduleSidebar');
+  if(!el) return;
+  const tickets = (state.schedule_tickets || []).filter(t => (t.game_name||'').trim());
+
+  el.innerHTML = '';
+
+  const label = document.createElement('div');
+  label.className = 'schedule-sidebar-label';
+  label.textContent = 'Schedule';
+  el.appendChild(label);
+
+  const allBtn = document.createElement('button');
+  allBtn.type = 'button';
+  allBtn.className = 'schedule-all-btn' + (scheduleFilter.month==='All' ? ' active' : '');
+  allBtn.textContent = 'All months';
+  allBtn.onclick = ()=>{ scheduleFilter.month = 'All'; renderSchedule(); };
+  el.appendChild(allBtn);
+
+  MONTHS.forEach(m=>{
+    const count = tickets.filter(t=>t.month===m).length;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'schedule-month-btn ' + (count>0 ? 'has-games' : 'is-empty') + (scheduleFilter.month===m ? ' active' : '');
+    btn.title = `${m}: ${count} game${count===1?'':'s'}`;
+    btn.innerHTML = `<span class="msticker">${MONTH_STICKERS[m]||''}</span><span class="mdot"></span><span class="mname">${m}</span><span class="mbadge">${count}</span>`;
+    btn.onclick = ()=>{ scheduleFilter.month = m; renderSchedule(); };
+    el.appendChild(btn);
+  });
+}
+
+function renderSchedule(){
+  const head = document.getElementById('scheduleContentHead');
+  const grid = document.getElementById('scheduleGrid');
+  const emptyNote = document.getElementById('scheduleEmpty');
+  if(!grid) return;
+
+  const allTickets = state.schedule_tickets || [];
+  const isAll = scheduleFilter.month === 'All';
+  const tickets = isAll
+    ? allTickets.filter(t => (t.game_name||'').trim())
+    : allTickets.filter(t => t.month === scheduleFilter.month);
+
+  /* Header: title + count + add button. "+ Add sticker" while viewing
+     All months defaults the new note to the current real-world month
+     (its own month field can still be changed afterwards). */
+  if(head){
+    head.innerHTML = '';
+    const titleEl = document.createElement('h3');
+    titleEl.textContent = isAll ? 'All Games' : `${MONTH_STICKERS[scheduleFilter.month]||''} ${scheduleFilter.month}`;
+    head.appendChild(titleEl);
+
+    const rightWrap = document.createElement('div');
+    rightWrap.className = 'schedule-month-detail-head-right';
+
+    const countEl = document.createElement('span');
+    countEl.className = 'schedule-month-detail-count';
+    countEl.textContent = `${tickets.length} game${tickets.length===1?'':'s'}`;
+    rightWrap.appendChild(countEl);
+
+    if(EDIT_MODE){
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn';
+      addBtn.textContent = '+ Add sticker';
+      addBtn.onclick = ()=>addScheduleTicket(isAll ? MONTHS[new Date().getMonth()] : scheduleFilter.month);
+      rightWrap.appendChild(addBtn);
+    }
+
+    head.appendChild(rightWrap);
+  }
+
+  grid.innerHTML = '';
+  if(!tickets.length){
+    const empty = document.createElement('div');
+    empty.className = 'ticket-empty';
+    empty.textContent = EDIT_MODE ? 'No stickers yet.' : 'No releases scheduled.';
+    grid.appendChild(empty);
+  } else {
+    tickets.forEach(t=>grid.appendChild(renderScheduleTicket(t)));
+  }
+
+  if(emptyNote) emptyNote.classList.add('hidden');
+  renderScheduleSidebar();
+}
+
+/* ---------- Sticky-note ticket rendering (Release Schedule tab) ----------
+   Each ticket is a resizable "sticky note" (drag its bottom-right corner
+   to make it larger/smaller — size is remembered per ticket). In Editor
+   mode, the note's details field is a rich-text (contenteditable) area
+   with a small formatting toolbar: Bold, Italic, Underline, Strikethrough,
+   Bullet list, and Image insert — matching the reference toolbar look.
+   Rich content is stored as HTML in ticket.notes_html. Older tickets that
+   only have a plain-text `notes` field (one line per bullet) still render
+   fine in view mode and get migrated to notes_html the first time they're
+   edited. Notes render at a fixed uniform size (no per-note resizing). */
+
+function migrateTicketNotesToHtml(t){
+  if(t.notes_html) return t.notes_html;
+  const lines = (t.notes||'').split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return '';
+  return '<ul>' + lines.map(l=>`<li>${escapeHtml(l)}</li>`).join('') + '</ul>';
+}
+
+function renderScheduleTicket(t){
+  const wrap = document.createElement('div');
+  wrap.className = 'ticket';
+  wrap.dataset.id = t.id;
+
+  const color = stickyColorFor(t);
+  const note = document.createElement('div');
+  note.className = 'sched-card';
+  note.style.borderTopColor = color.accent;
+  wrap.appendChild(note);
+
+  const hasDate = (t.release_date||'').trim().length > 0;
+
+  if(!EDIT_MODE){
+    const head = document.createElement('div');
+    head.className = 'sched-card-head';
+    head.innerHTML = `<span class="sched-card-icon">🎮</span><span class="sched-card-badge ${hasDate?'scheduled':'pending'}">${hasDate?'Scheduled':'No date'}</span>`;
+    note.appendChild(head);
+
+    const title = document.createElement('div');
+    title.className = 'sched-card-title';
+    title.textContent = t.game_name || 'Untitled';
+    title.title = t.game_name || 'Untitled';
+    note.appendChild(title);
+
+    const pill = document.createElement('span');
+    pill.className = 'sched-card-pill' + (hasDate ? '' : ' muted');
+    pill.textContent = hasDate ? formatDateNice(t.release_date) : 'No release date';
+    note.appendChild(pill);
+
+    const body = document.createElement('div');
+    body.className = 'sticky-note-body';
+    const html = migrateTicketNotesToHtml(t);
+    body.innerHTML = html || '<span style="opacity:.6">No details yet.</span>';
+    note.appendChild(body);
+
+    return wrap;
+  }
+
+  /* --- Edit mode: same compact card shell, with an icon row up top and
+     the existing editable title/date/month/color/delete controls and
+     rich-text notes area underneath. --- */
+  const iconRow = document.createElement('div');
+  iconRow.className = 'sched-card-head';
+  iconRow.innerHTML = `<span class="sched-card-icon">🎮</span>`;
+  note.appendChild(iconRow);
+
+  const header = document.createElement('div');
+  header.className = 'sticky-note-header';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'sticky-note-title-row';
+
+  const nameInput = document.createElement('input');
+  nameInput.type = 'text';
+  nameInput.placeholder = 'Game name';
+  nameInput.value = t.game_name || '';
+  nameInput.addEventListener('blur', ()=>{
+    t.game_name = nameInput.value || null;
+    commit('schedule_tickets', t, 'schedule');
+  });
+  titleRow.appendChild(nameInput);
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'note-del';
+  delBtn.textContent = '✕';
+  delBtn.title = 'Delete this note';
+  delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
+  titleRow.appendChild(delBtn);
+
+  header.appendChild(titleRow);
+
+  const metaRow = document.createElement('div');
+  metaRow.className = 'sticky-note-meta-row';
+
+  const monthSelect = document.createElement('select');
+  MONTHS.forEach(m=>{
+    const o = document.createElement('option'); o.value=m; o.textContent=m;
+    if(m===t.month) o.selected = true;
+    monthSelect.appendChild(o);
+  });
+
+  const dateInput = document.createElement('input');
+  dateInput.type = 'date';
+  dateInput.className = 'sticky-note-date-input';
+  dateInput.title = 'Release date';
+  dateInput.value = t.release_date || '';
+  dateInput.addEventListener('change', ()=>{
+    t.release_date = dateInput.value || null;
+    if(t.release_date){
+      const d = new Date(t.release_date+'T00:00:00');
+      if(!isNaN(d)){
+        t.month = MONTHS[d.getMonth()];
+        monthSelect.value = t.month;
+      }
+    }
+    commit('schedule_tickets', t, 'schedule');
+    renderSchedule();
+  });
+  metaRow.appendChild(dateInput);
+
+  monthSelect.addEventListener('change', ()=>{
+    t.month = monthSelect.value;
+    commit('schedule_tickets', t, 'schedule');
+    renderSchedule();
+  });
+  metaRow.appendChild(monthSelect);
+
+  if((t.release_date||'').trim()){
+    const d = new Date(t.release_date+'T00:00:00');
+    if(!isNaN(d) && MONTHS[d.getMonth()] !== t.month){
+      const warn = document.createElement('span');
+      warn.className = 'sticky-note-mismatch';
+      warn.textContent = '⚠';
+      warn.title = 'Release date doesn\'t fall in the selected month';
+      metaRow.appendChild(warn);
+    }
+  }
+
+  const colorBtn = document.createElement('button');
+  colorBtn.type = 'button';
+  colorBtn.className = 'note-color-btn';
+  colorBtn.title = 'Change accent color';
+  colorBtn.style.background = color.accent;
+  colorBtn.onclick = (e)=>{
+    e.stopPropagation();
+    const existing = note.querySelector('.sticky-color-popover');
+    if(existing){ existing.remove(); return; }
+    const popover = document.createElement('div');
+    popover.className = 'sticky-color-popover';
+    STICKY_COLORS.forEach(c=>{
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.style.background = c.accent;
+      dot.title = c.key;
+      if(c.key === (t.color || stickyColorFor(t).key)) dot.classList.add('selected');
+      dot.onclick = (ev)=>{
+        ev.stopPropagation();
+        t.color = c.key;
+        commit('schedule_tickets', t, 'schedule');
+        popover.remove();
+        renderSchedule();
+      };
+      popover.appendChild(dot);
+    });
+    note.appendChild(popover);
+    const closeOnOutsideClick = (ev)=>{
+      if(!popover.contains(ev.target) && ev.target !== colorBtn){
+        popover.remove();
+        document.removeEventListener('click', closeOnOutsideClick);
+      }
+    };
+    setTimeout(()=>document.addEventListener('click', closeOnOutsideClick), 0);
+  };
+  metaRow.appendChild(colorBtn);
+
+  header.appendChild(metaRow);
+  note.appendChild(header);
+
+  /* --- Notes: rich-text area with a small formatting toolbar --- */
+  const notesEl = document.createElement('div');
+  notesEl.className = 'sticky-note-body';
+  notesEl.contentEditable = 'true';
+  notesEl.setAttribute('data-placeholder', 'One detail per line, e.g.\nToto Live: 17 August\nAlbatros Live: 20 August\nPlanned Global Launch: 3 September');
+  notesEl.innerHTML = migrateTicketNotesToHtml(t);
+  notesEl.addEventListener('blur', ()=>{
+    t.notes_html = notesEl.innerHTML;
+    t.notes = notesEl.innerText; // keep plain-text copy in sync for search/back-compat
+    commit('schedule_tickets', t, 'schedule');
+  });
+  note.appendChild(notesEl);
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'sticky-note-toolbar';
+
+  function runCmd(cmd, value){
+    notesEl.focus();
+    document.execCommand(cmd, false, value || null);
+  }
+  function toolBtn(cls, label, title, onClick){
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = cls;
+    b.textContent = label;
+    b.title = title;
+    b.onmousedown = (e)=>e.preventDefault(); // keep focus/selection in notesEl
+    b.onclick = onClick;
+    return b;
+  }
+
+  toolbar.appendChild(toolBtn('b', 'B', 'Bold', ()=>runCmd('bold')));
+  toolbar.appendChild(toolBtn('i', 'I', 'Italic', ()=>runCmd('italic')));
+  toolbar.appendChild(toolBtn('u', 'U', 'Underline', ()=>runCmd('underline')));
+  toolbar.appendChild(toolBtn('s', 'S', 'Strikethrough', ()=>runCmd('strikeThrough')));
+
+  const sep1 = document.createElement('div'); sep1.className = 'sep';
+  toolbar.appendChild(sep1);
+
+  toolbar.appendChild(toolBtn('list', '≡', 'Bullet list', ()=>runCmd('insertUnorderedList')));
+
+  const imgInput = document.createElement('input');
+  imgInput.type = 'file';
+  imgInput.accept = 'image/*';
+  imgInput.addEventListener('change', ()=>{
+    const file = imgInput.files && imgInput.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      runCmd('insertImage', reader.result);
+      t.notes_html = notesEl.innerHTML;
+      commit('schedule_tickets', t, 'schedule');
+    };
+    reader.readAsDataURL(file);
+    imgInput.value = '';
+  });
+  const imgBtn = toolBtn('img', '🖼', 'Insert image', ()=>imgInput.click());
+  toolbar.appendChild(imgBtn);
+  toolbar.appendChild(imgInput);
+
+  note.appendChild(toolbar);
+
+  return wrap;
+}
+
+async function addScheduleTicket(month){
+  const blank = { id: crypto.randomUUID(), month, game_name: '', release_date: null, notes: '', notes_html: '', width: null, height: null };
+  state.schedule_tickets.push(blank);
+  persistLocal('schedule_tickets');
+  renderSchedule();
+  if(ONLINE_MODE){
+    const {error} = await supa.from('schedule_tickets').insert(blank);
+    if(error) console.warn('Insert failed', 'schedule_tickets', error);
+  }
+  return blank;
+}
+
+let charts = {};
+function renderDashboard(){
+  const cal = (state.release_calendar||[]).filter(r=>r.game_name);
+  const total = cal.length;
+  const inProd = cal.filter(r=>r.stage==='Production').length;
+  const demoLinkReady = cal.filter(r=>(r.demo_link||'').trim()).length;
+
+  document.getElementById('kpiRow').innerHTML = `
+    <div class="kpi"><div class="lbl">Total Games Tracked</div><div class="val">${total}</div></div>
+    <div class="kpi"><div class="lbl">In Production</div><div class="val">${inProd}</div></div>
+    <div class="kpi"><div class="lbl">Demo Link Ready</div><div class="val">${demoLinkReady}</div></div>
+  `;
+
+  const stageCounts = LISTS.stage.map(s=>cal.filter(r=>r.stage===s).length);
+  const typeCounts = LISTS.product_type.map(t=>cal.filter(r=>r.product_type===t).length);
+  const qtrCounts = LISTS.quarter.map(q=>cal.filter(r=>r.quarter===q).length);
+
+  const progresses = cal.map(r=>computeProgress(computeSteps(r)));
+  const fullyReady = progresses.filter(p=>p>=100).length;
+  const notStarted = progresses.filter(p=>p===0).length;
+  const inProgress = total - fullyReady - notStarted;
+
+  drawChart('chartStage','bar',LISTS.stage,stageCounts,'#2F5597');
+  drawChart('chartType','pie',LISTS.product_type,typeCounts);
+  drawChart('chartQuarter','bar',LISTS.quarter,qtrCounts,'#6FA8DC');
+  drawChart('chartReadiness','doughnut',['Fully Ready','In Progress','Not Started'],[fullyReady,inProgress,notStarted],null,['#375623','#806000','#833C00']);
+
+  renderMilestones(cal);
+}
+
+function renderMilestones(cal){
+  const milestoneFields = [
+    {key:'toto_live_date', label:'Toto Live'},
+    {key:'albatros_live_date', label:'Albatros Live'},
+    {key:'planned_global_launch', label:'Global Launch'}
+  ];
+  const today = new Date(); today.setHours(0,0,0,0);
+  const items = [];
+  cal.forEach(r=>{
+    milestoneFields.forEach(f=>{
+      const v = (r[f.key]||'').toString().trim();
+      if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
+        const d = new Date(v+'T00:00:00');
+        if(!isNaN(d) && d.getTime() >= today.getTime()){
+          items.push({date:d, label:f.label, game:r.game_name});
+        }
+      }
+    });
+  });
+  items.sort((a,b)=>a.date-b.date);
+  const list = document.getElementById('milestoneList');
+  if(!items.length){
+    list.innerHTML = '<div class="empty-note">No upcoming dated milestones. Dates entered as text ranges (e.g. "15-19 Jun") aren\'t shown here — check the Go-to-Market tab for those.</div>';
+    return;
+  }
+  list.innerHTML = items.slice(0,8).map(it=>`
+    <div class="milestone">
+      <div class="m-date">${it.date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</div>
+      <div class="m-game">${escapeHtml(it.game)}</div>
+      <div class="m-type">${it.label}</div>
+    </div>
+  `).join('');
+}
+
+function drawChart(canvasId, type, labels, data, color, palette){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  if(typeof Chart === 'undefined'){
+    const msg = document.createElement('div');
+    msg.style.cssText = 'padding:20px;color:var(--muted);font-size:12px;text-align:center;';
+    msg.textContent = 'Chart library failed to load (check internet connection / ad-blocker).';
+    canvas.replaceWith(msg);
+    return;
+  }
+  const ctx = canvas.getContext('2d');
+  if(charts[canvasId]) charts[canvasId].destroy();
+  const defaultPalette = ['#2F5597','#6FA8DC','#8FAADC','#B4C7E7','#375623','#C6E0B4','#806000','#4C2F72'];
+  const isDonut = type==='pie' || type==='doughnut';
+  charts[canvasId] = new Chart(ctx, {
+    type,
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: isDonut ? (palette || defaultPalette) : color,
+        borderRadius: type==='bar' ? 4 : 0,
+        borderWidth: isDonut ? 2 : 0,
+        borderColor:'#fff'
+      }]
+    },
+    options: {
+      responsive:true,
+      plugins:{ legend:{ display: isDonut, position:'right', labels:{boxWidth:12,font:{size:11}} } },
+      scales: type==='bar' ? { y:{ beginAtZero:true, ticks:{precision:0} } } : {}
+    }
+  });
+}
 </script>
 </body>
 </html>
