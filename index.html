@@ -815,11 +815,14 @@ const TABLES = {
       {key:'albatros_live_date', label:'Albatros Live', type:'date', w:140},
       {key:'pre_release_window', label:'Pre-Release Window', type:'date', w:140},
       {key:'planned_global_launch', label:'Global Launch', type:'date', w:140, bold:true},
-      /* Shared with the Go-to-Market pipeline's "Demo Link" and "Emails"
-         steps — editing either one here updates the GTM card, and vice
-         versa, since both tabs read/write the same row fields. */
+      /* RTP sits right before Demo Link. NOTE: this needs a matching "rtp"
+         text column in the Supabase release_calendar table:
+         alter table release_calendar add column rtp text; */
+      {key:'rtp', label:'RTP', type:'text', w:120},
+      /* Shared with the Go-to-Market pipeline's "Demo Link" step — editing
+         it here updates the GTM card, and vice versa, since both tabs
+         read/write the same row field. */
       {key:'demo_link', label:'Demo Link', type:'text', w:180},
-      {key:'marketing_email', label:'Email', type:'text', w:180},
       {key:'notes', label:'Notes', type:'textarea', w:260}
     ]
   },
@@ -1958,9 +1961,9 @@ function readinessStatus(value){
   if(v==='No') return {state:'blocked', text:v};
   return {state:'pending', text:'Not set'};
 }
-/* Demo Link and Emails aren't readiness dropdowns or dates — they're plain
-   text/URL fields shared with the Release Calendar table. The step just
-   reflects whether something has been filled in yet. */
+/* Demo Link isn't a readiness dropdown or a date — it's a plain text/URL
+   field shared with the Release Calendar table. The step just reflects
+   whether something has been filled in yet. */
 function linkStepStatus(value){
   const v = (value||'').toString().trim();
   if(!v) return {state:'pending', text:'Not set'};
