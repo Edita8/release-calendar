@@ -466,9 +466,7 @@
     <button data-tab="gtm">Go-to-Market</button>
     <button data-tab="dashboard">Dashboard</button>
     <button data-tab="prerelease">Pre-Release Tracker</button>
-    <button data-tab="schedule">Release Schedule</button>
     <button data-tab="partners">Top Partners</button>
-    <button data-tab="snapshot">Performance Snapshot</button>
     <button data-tab="settings" class="editor-only">Settings</button>
   </nav>
 
@@ -556,21 +554,6 @@
       <div id="prereleaseEmpty" class="empty-note hidden">No entries match your search.</div>
     </section>
 
-    <!-- RELEASE SCHEDULE -->
-    <section class="panel" id="panel-schedule">
-      <div class="panel-head">
-        <div><h2>Release Schedule</h2><p>Month-by-month sticky-note board. Give each note a game name and release date. Click a month on the left to jump to it — green means it has games, red means it's still empty.</p></div>
-      </div>
-      <div class="schedule-layout">
-        <aside class="schedule-sidebar" id="scheduleSidebar"></aside>
-        <div class="schedule-content">
-          <div id="scheduleContentHead" class="schedule-month-detail-head"></div>
-          <div id="scheduleGrid" class="schedule-flat-grid"></div>
-          <div id="scheduleEmpty" class="empty-note hidden">No releases scheduled for this period.</div>
-        </div>
-      </div>
-    </section>
-
     <!-- TOP PARTNERS -->
     <section class="panel" id="panel-partners">
       <div class="panel-head">
@@ -581,17 +564,6 @@
         </div>
       </div>
       <div class="table-wrap"><table><thead><tr id="head-top_partners"></tr></thead><tbody id="body-top_partners"></tbody></table></div>
-    </section>
-
-    <!-- SNAPSHOT -->
-    <section class="panel" id="panel-snapshot">
-      <div class="panel-head">
-        <div><h2>Performance Snapshot</h2><p>Ad-hoc post-launch performance figures</p></div>
-        <div class="toolbar">
-          <button class="btn editor-only" onclick="addRow('performance_snapshot')">+ Add Row</button>
-        </div>
-      </div>
-      <div class="table-wrap"><table><thead><tr id="head-performance_snapshot"></tr></thead><tbody id="body-performance_snapshot"></tbody></table></div>
     </section>
 
     <!-- SETTINGS -->
@@ -756,7 +728,7 @@ async function saveNewPins(){
   document.getElementById('newEditPin').value = '';
 }
 
-const SEED = {"release_calendar": [], "pre_release": [], "schedule_tickets": [], "top_partners": [], "performance_snapshot": []};
+const SEED = {"release_calendar": [], "pre_release": [], "top_partners": []};
 
 const LISTS = {
   quarter: ['Q1','Q2','Q3','Q4'],
@@ -838,23 +810,6 @@ const TABLES = {
       {key:'notes', label:'Notes', type:'textarea', w:220}
     ]
   },
-  /* Rendered by the custom Release Schedule board (renderSchedule), not by
-     the generic table renderer — this config only exists so load/save/sync
-     and the generic deleteRow() helper work the same way as other tables.
-     notes_html/width/height are read directly off each ticket row by the
-     custom sticky-note renderer below. */
-  schedule_tickets: {
-    label:'Release Schedule',
-    columns:[
-      {key:'month', label:'Month', type:'text', w:120},
-      {key:'game_name', label:'Game', type:'text', w:170},
-      {key:'release_date', label:'Release Date', type:'date', w:120},
-      {key:'notes', label:'Details', type:'textarea', w:260},
-      {key:'notes_html', label:'Details (rich text)', type:'textarea', w:260},
-      {key:'width', label:'Width', type:'text', w:80},
-      {key:'height', label:'Height', type:'text', w:80}
-    ]
-  },
   top_partners: {
     label:'Top Partners',
     columns:[
@@ -864,15 +819,6 @@ const TABLES = {
       {key:'players_period2', label:'Players (Period 2)', type:'number', w:130},
       {key:'deal_owner', label:'Deal Owner', type:'text', w:130},
       {key:'account_manager', label:'Account Manager', type:'text', w:150}
-    ]
-  },
-  performance_snapshot: {
-    label:'Performance Snapshot',
-    columns:[
-      {key:'game', label:'Game', type:'text', w:150},
-      {key:'period', label:'Period', type:'text', w:180},
-      {key:'ggr', label:'GGR', type:'number', w:110},
-      {key:'players', label:'Players', type:'number', w:110}
     ]
   }
 };
@@ -895,41 +841,12 @@ const editingCells = new Set();
 const openGtmCards = new Set();
 let gtmFilter = { quarter:'All', pendingOnly:false, search:'' };
 let calendarFilters = { quarter:'All', stage:'All', product_type:'All', text:'' };
-let scheduleFilter = { month:'All' };
 let prereleaseFilter = { text:'' };
 const openPrereleaseGames = new Set();
 const PRERELEASE_NO_GAME_LABEL = '— No game selected —';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-const MONTH_QUARTERS = { January:'Q1', February:'Q1', March:'Q1', April:'Q2', May:'Q2', June:'Q2', July:'Q3', August:'Q3', September:'Q3', October:'Q4', November:'Q4', December:'Q4' };
-const MONTH_STICKERS = { January:'❄️', February:'💘', March:'🌱', April:'🌧️', May:'🌷', June:'☀️', July:'🎆', August:'🏖️', September:'🍂', October:'🎃', November:'🦃', December:'🎄' };
 
-/* Pastel sticky-note colors (background + matching text color), styled
-   after the OS Sticky Notes palette. If a ticket has an explicit `color`
-   key (chosen by the user via the swatch picker) that's used; otherwise
-   one is assigned deterministically from the ticket's id, so untouched
-   tickets keep a stable color across reloads/re-renders. */
-const STICKY_COLORS = [
-  {key:'yellow', bg:'#FFF3B0', text:'#5c4b00', accent:'#F2B705'},
-  {key:'pink',   bg:'#FAD4E4', text:'#6b2c47', accent:'#E85D9E'},
-  {key:'blue',   bg:'#CFE8FB', text:'#1c4a66', accent:'#3D8BE0'},
-  {key:'purple', bg:'#E3D9F7', text:'#4a3572', accent:'#8B6FE8'},
-  {key:'orange', bg:'#FFDCC2', text:'#7a3d10', accent:'#F2894E'},
-  {key:'mint',   bg:'#D6F0DA', text:'#276339', accent:'#3FAE6B'}
-];
-function stickyColorByKey(key){
-  return STICKY_COLORS.find(c=>c.key===key) || null;
-}
-function stickyColorFor(ticket){
-  if(ticket.color){
-    const chosen = stickyColorByKey(ticket.color);
-    if(chosen) return chosen;
-  }
-  let h = 0;
-  const s = String(ticket.id || '');
-  for(let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) >>> 0; }
-  return STICKY_COLORS[h % STICKY_COLORS.length];
-}
 let calendarSort = { key:null, dir:'asc' };
 let draggedCalendarRowId = null;
 let calendarColWidths = {};
@@ -953,12 +870,6 @@ async function boot(){
     await loadAllTables();
   } catch(e){
     reportError('Failed to load data: ' + (e.message||e));
-  }
-
-  try{
-    backfillScheduleStickersFromCalendar();
-  } catch(e){
-    console.warn('Could not backfill Release Schedule stickers from Release Calendar:', e);
   }
 
   try{ renderAll(); } catch(e){ reportError('Failed to render the tracker: ' + (e.message||e)); }
@@ -1107,10 +1018,6 @@ function renderTable(table, filterOverride){
   if(table === 'release_calendar'){
     if(typeof filterOverride === 'string') calendarFilters.text = filterOverride;
     renderCalendarTable();
-    return;
-  }
-  if(table === 'schedule_tickets'){
-    renderSchedule();
     return;
   }
   if(table === 'pre_release'){
@@ -1764,78 +1671,6 @@ function applyBoolBadge(selectEl, value){
   else if(value===false){ selectEl.style.background='var(--red-bg)'; selectEl.style.color='var(--red-fg)'; selectEl.style.fontWeight='700'; }
 }
 
-/* Keeps the Release Schedule board in sync with a game's Planned Global
-   Launch date from the Release Calendar. As soon as that date is set (or
-   changed), this either creates a new sticker in the matching month or,
-   if a sticker for this game already exists (matched by game name), moves
-   it to the right month/date instead of creating a duplicate. Matching is
-   by name rather than a stored link so it works without any extra
-   Supabase column — rename the game in both places if you ever need to
-   re-link them. */
-function syncScheduleStickerForGame(row, opts){
-  opts = opts || {};
-  const gameName = (row && row.game_name || '').trim();
-  if(!gameName) return;
-  const dateVal = (row && row.planned_global_launch || '').trim();
-  const tickets = state.schedule_tickets || [];
-  const existing = tickets.find(t => (t.game_name||'').trim().toLowerCase() === gameName.toLowerCase());
-
-  /* Global Launch date was cleared on the calendar — clear the sticker's
-     date too, but keep the sticker (and its month/notes) in place rather
-     than deleting it. */
-  if(!dateVal){
-    if(existing && (existing.release_date||'').trim()){
-      existing.release_date = null;
-      persistLocal('schedule_tickets');
-      if(!opts.silent) renderSchedule();
-      if(ONLINE_MODE){
-        supa.from('schedule_tickets').update({release_date: null}).eq('id', existing.id)
-          .then(({error})=>{ if(error) console.warn('Could not clear schedule sticker date', error); });
-      }
-    }
-    return;
-  }
-
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(dateVal)) return;
-  const d = new Date(dateVal+'T00:00:00');
-  if(isNaN(d)) return;
-  const month = MONTHS[d.getMonth()];
-
-  /* Calendar always wins: if the sticker's date/month has drifted from the
-     calendar (whether from a manual edit or nothing set yet), this brings
-     it back in line rather than leaving the manual edit in place. */
-  if(existing){
-    if(existing.release_date === dateVal && existing.month === month) return;
-    existing.release_date = dateVal;
-    existing.month = month;
-    persistLocal('schedule_tickets');
-    if(!opts.silent) renderSchedule();
-    if(ONLINE_MODE){
-      supa.from('schedule_tickets').update({release_date: dateVal, month}).eq('id', existing.id)
-        .then(({error})=>{ if(error) console.warn('Could not sync schedule sticker', error); });
-    }
-  } else {
-    const blank = { id: crypto.randomUUID(), month, game_name: gameName, release_date: dateVal, notes: '', notes_html: '', width: null, height: null };
-    state.schedule_tickets.push(blank);
-    persistLocal('schedule_tickets');
-    if(!opts.silent) renderSchedule();
-    if(ONLINE_MODE){
-      supa.from('schedule_tickets').insert(blank).then(({error})=>{ if(error) console.warn('Could not auto-create schedule sticker', error); });
-    }
-  }
-}
-
-/* One-time (and safe to re-run) backfill: walks every game currently in
-   the Release Calendar and makes sure each one with a Global Launch date
-   has a matching Release Schedule sticker, creating any that are missing.
-   Runs automatically at boot so existing games get their stickers without
-   needing to re-save each row by hand; idempotent, so it's harmless to run
-   again on every page load. */
-function backfillScheduleStickersFromCalendar(){
-  (state.release_calendar || []).forEach(row => syncScheduleStickerForGame(row, {silent:true}));
-  renderSchedule();
-}
-
 async function commit(table, row, sourceView){
   persistLocal(table);
   renderDashboard();
@@ -1845,15 +1680,6 @@ async function commit(table, row, sourceView){
     /* Game names may have changed — refresh the Pre-Release Tracker's
        Game dropdown so it stays in sync with Release Calendar. */
     renderTable('pre_release');
-    /* Auto-create/update the matching Release Schedule sticker whenever
-       the Planned Global Launch date (or the game name) changes. */
-    syncScheduleStickerForGame(row);
-  }
-  if(table==='schedule_tickets'){
-    /* Ticket edits (name/month/notes) are saved directly via saveTicketField
-       below without a full re-render, so we don't call renderSchedule()
-       here — doing so would rebuild the DOM mid-edit and drop focus/cursor
-       position inside the rich-text note or destroy an in-progress resize. */
   }
   if(!ONLINE_MODE) return;
   /* IMPORTANT: .select() is added here so we get back the row(s) that were
@@ -1950,7 +1776,6 @@ function handleRealtime(table, payload){
   if(table==='release_calendar'){
     renderGTM();
     renderTable('pre_release');
-    if(payload.eventType!=='DELETE') syncScheduleStickerForGame(payload.new);
   }
 }
 
@@ -2174,345 +1999,6 @@ function renderGtmCard(row){
   }
 
   return card;
-}
-
-function renderScheduleSidebar(){
-  const el = document.getElementById('scheduleSidebar');
-  if(!el) return;
-  const tickets = (state.schedule_tickets || []).filter(t => (t.game_name||'').trim());
-
-  el.innerHTML = '';
-
-  const label = document.createElement('div');
-  label.className = 'schedule-sidebar-label';
-  label.textContent = 'Schedule';
-  el.appendChild(label);
-
-  const allBtn = document.createElement('button');
-  allBtn.type = 'button';
-  allBtn.className = 'schedule-all-btn' + (scheduleFilter.month==='All' ? ' active' : '');
-  allBtn.textContent = 'All months';
-  allBtn.onclick = ()=>{ scheduleFilter.month = 'All'; renderSchedule(); };
-  el.appendChild(allBtn);
-
-  MONTHS.forEach(m=>{
-    const count = tickets.filter(t=>t.month===m).length;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'schedule-month-btn ' + (count>0 ? 'has-games' : 'is-empty') + (scheduleFilter.month===m ? ' active' : '');
-    btn.title = `${m}: ${count} game${count===1?'':'s'}`;
-    btn.innerHTML = `<span class="msticker">${MONTH_STICKERS[m]||''}</span><span class="mdot"></span><span class="mname">${m}</span><span class="mbadge">${count}</span>`;
-    btn.onclick = ()=>{ scheduleFilter.month = m; renderSchedule(); };
-    el.appendChild(btn);
-  });
-}
-
-function renderSchedule(){
-  const head = document.getElementById('scheduleContentHead');
-  const grid = document.getElementById('scheduleGrid');
-  const emptyNote = document.getElementById('scheduleEmpty');
-  if(!grid) return;
-
-  const allTickets = state.schedule_tickets || [];
-  const isAll = scheduleFilter.month === 'All';
-  const tickets = isAll
-    ? allTickets.filter(t => (t.game_name||'').trim())
-    : allTickets.filter(t => t.month === scheduleFilter.month);
-
-  /* Header: title + count + add button. "+ Add sticker" while viewing
-     All months defaults the new note to the current real-world month
-     (its own month field can still be changed afterwards). */
-  if(head){
-    head.innerHTML = '';
-    const titleEl = document.createElement('h3');
-    titleEl.textContent = isAll ? 'All Games' : `${MONTH_STICKERS[scheduleFilter.month]||''} ${scheduleFilter.month}`;
-    head.appendChild(titleEl);
-
-    const rightWrap = document.createElement('div');
-    rightWrap.className = 'schedule-month-detail-head-right';
-
-    const countEl = document.createElement('span');
-    countEl.className = 'schedule-month-detail-count';
-    countEl.textContent = `${tickets.length} game${tickets.length===1?'':'s'}`;
-    rightWrap.appendChild(countEl);
-
-    if(EDIT_MODE){
-      const addBtn = document.createElement('button');
-      addBtn.className = 'btn';
-      addBtn.textContent = '+ Add sticker';
-      addBtn.onclick = ()=>addScheduleTicket(isAll ? MONTHS[new Date().getMonth()] : scheduleFilter.month);
-      rightWrap.appendChild(addBtn);
-    }
-
-    head.appendChild(rightWrap);
-  }
-
-  grid.innerHTML = '';
-  if(!tickets.length){
-    const empty = document.createElement('div');
-    empty.className = 'ticket-empty';
-    empty.textContent = EDIT_MODE ? 'No stickers yet.' : 'No releases scheduled.';
-    grid.appendChild(empty);
-  } else {
-    tickets.forEach(t=>grid.appendChild(renderScheduleTicket(t)));
-  }
-
-  if(emptyNote) emptyNote.classList.add('hidden');
-  renderScheduleSidebar();
-}
-
-/* ---------- Sticky-note ticket rendering (Release Schedule tab) ----------
-   Each ticket is a resizable "sticky note" (drag its bottom-right corner
-   to make it larger/smaller — size is remembered per ticket). In Editor
-   mode, the note's details field is a rich-text (contenteditable) area
-   with a small formatting toolbar: Bold, Italic, Underline, Strikethrough,
-   Bullet list, and Image insert — matching the reference toolbar look.
-   Rich content is stored as HTML in ticket.notes_html. Older tickets that
-   only have a plain-text `notes` field (one line per bullet) still render
-   fine in view mode and get migrated to notes_html the first time they're
-   edited. Notes render at a fixed uniform size (no per-note resizing). */
-
-function migrateTicketNotesToHtml(t){
-  if(t.notes_html) return t.notes_html;
-  const lines = (t.notes||'').split('\n').map(l=>l.trim()).filter(Boolean);
-  if(!lines.length) return '';
-  return '<ul>' + lines.map(l=>`<li>${escapeHtml(l)}</li>`).join('') + '</ul>';
-}
-
-function renderScheduleTicket(t){
-  const wrap = document.createElement('div');
-  wrap.className = 'ticket';
-  wrap.dataset.id = t.id;
-
-  const color = stickyColorFor(t);
-  const note = document.createElement('div');
-  note.className = 'sched-card';
-  note.style.borderTopColor = color.accent;
-  wrap.appendChild(note);
-
-  const hasDate = (t.release_date||'').trim().length > 0;
-
-  if(!EDIT_MODE){
-    const head = document.createElement('div');
-    head.className = 'sched-card-head';
-    head.innerHTML = `<span class="sched-card-icon">🎮</span><span class="sched-card-badge ${hasDate?'scheduled':'pending'}">${hasDate?'Scheduled':'No date'}</span>`;
-    note.appendChild(head);
-
-    const title = document.createElement('div');
-    title.className = 'sched-card-title';
-    title.textContent = t.game_name || 'Untitled';
-    title.title = t.game_name || 'Untitled';
-    note.appendChild(title);
-
-    const pill = document.createElement('span');
-    pill.className = 'sched-card-pill' + (hasDate ? '' : ' muted');
-    pill.textContent = hasDate ? formatDateNice(t.release_date) : 'No release date';
-    note.appendChild(pill);
-
-    const body = document.createElement('div');
-    body.className = 'sticky-note-body';
-    const html = migrateTicketNotesToHtml(t);
-    body.innerHTML = html || '<span style="opacity:.6">No details yet.</span>';
-    note.appendChild(body);
-
-    return wrap;
-  }
-
-  /* --- Edit mode: same compact card shell, with an icon row up top and
-     the existing editable title/date/month/color/delete controls and
-     rich-text notes area underneath. --- */
-  const iconRow = document.createElement('div');
-  iconRow.className = 'sched-card-head';
-  iconRow.innerHTML = `<span class="sched-card-icon">🎮</span>`;
-  note.appendChild(iconRow);
-
-  const header = document.createElement('div');
-  header.className = 'sticky-note-header';
-
-  const titleRow = document.createElement('div');
-  titleRow.className = 'sticky-note-title-row';
-
-  const nameInput = document.createElement('input');
-  nameInput.type = 'text';
-  nameInput.placeholder = 'Game name';
-  nameInput.value = t.game_name || '';
-  nameInput.addEventListener('blur', ()=>{
-    t.game_name = nameInput.value || null;
-    commit('schedule_tickets', t, 'schedule');
-  });
-  titleRow.appendChild(nameInput);
-
-  const delBtn = document.createElement('button');
-  delBtn.className = 'note-del';
-  delBtn.textContent = '✕';
-  delBtn.title = 'Delete this note';
-  delBtn.onclick = ()=>deleteRow('schedule_tickets', t.id);
-  titleRow.appendChild(delBtn);
-
-  header.appendChild(titleRow);
-
-  const metaRow = document.createElement('div');
-  metaRow.className = 'sticky-note-meta-row';
-
-  const monthSelect = document.createElement('select');
-  MONTHS.forEach(m=>{
-    const o = document.createElement('option'); o.value=m; o.textContent=m;
-    if(m===t.month) o.selected = true;
-    monthSelect.appendChild(o);
-  });
-
-  const dateInput = document.createElement('input');
-  dateInput.type = 'date';
-  dateInput.className = 'sticky-note-date-input';
-  dateInput.title = 'Release date';
-  dateInput.value = t.release_date || '';
-  dateInput.addEventListener('change', ()=>{
-    t.release_date = dateInput.value || null;
-    if(t.release_date){
-      const d = new Date(t.release_date+'T00:00:00');
-      if(!isNaN(d)){
-        t.month = MONTHS[d.getMonth()];
-        monthSelect.value = t.month;
-      }
-    }
-    commit('schedule_tickets', t, 'schedule');
-    renderSchedule();
-  });
-  metaRow.appendChild(dateInput);
-
-  monthSelect.addEventListener('change', ()=>{
-    t.month = monthSelect.value;
-    commit('schedule_tickets', t, 'schedule');
-    renderSchedule();
-  });
-  metaRow.appendChild(monthSelect);
-
-  if((t.release_date||'').trim()){
-    const d = new Date(t.release_date+'T00:00:00');
-    if(!isNaN(d) && MONTHS[d.getMonth()] !== t.month){
-      const warn = document.createElement('span');
-      warn.className = 'sticky-note-mismatch';
-      warn.textContent = '⚠';
-      warn.title = 'Release date doesn\'t fall in the selected month';
-      metaRow.appendChild(warn);
-    }
-  }
-
-  const colorBtn = document.createElement('button');
-  colorBtn.type = 'button';
-  colorBtn.className = 'note-color-btn';
-  colorBtn.title = 'Change accent color';
-  colorBtn.style.background = color.accent;
-  colorBtn.onclick = (e)=>{
-    e.stopPropagation();
-    const existing = note.querySelector('.sticky-color-popover');
-    if(existing){ existing.remove(); return; }
-    const popover = document.createElement('div');
-    popover.className = 'sticky-color-popover';
-    STICKY_COLORS.forEach(c=>{
-      const dot = document.createElement('button');
-      dot.type = 'button';
-      dot.style.background = c.accent;
-      dot.title = c.key;
-      if(c.key === (t.color || stickyColorFor(t).key)) dot.classList.add('selected');
-      dot.onclick = (ev)=>{
-        ev.stopPropagation();
-        t.color = c.key;
-        commit('schedule_tickets', t, 'schedule');
-        popover.remove();
-        renderSchedule();
-      };
-      popover.appendChild(dot);
-    });
-    note.appendChild(popover);
-    const closeOnOutsideClick = (ev)=>{
-      if(!popover.contains(ev.target) && ev.target !== colorBtn){
-        popover.remove();
-        document.removeEventListener('click', closeOnOutsideClick);
-      }
-    };
-    setTimeout(()=>document.addEventListener('click', closeOnOutsideClick), 0);
-  };
-  metaRow.appendChild(colorBtn);
-
-  header.appendChild(metaRow);
-  note.appendChild(header);
-
-  /* --- Notes: rich-text area with a small formatting toolbar --- */
-  const notesEl = document.createElement('div');
-  notesEl.className = 'sticky-note-body';
-  notesEl.contentEditable = 'true';
-  notesEl.setAttribute('data-placeholder', 'One detail per line, e.g.\nToto Live: 17 August\nAlbatros Live: 20 August\nPlanned Global Launch: 3 September');
-  notesEl.innerHTML = migrateTicketNotesToHtml(t);
-  notesEl.addEventListener('blur', ()=>{
-    t.notes_html = notesEl.innerHTML;
-    t.notes = notesEl.innerText; // keep plain-text copy in sync for search/back-compat
-    commit('schedule_tickets', t, 'schedule');
-  });
-  note.appendChild(notesEl);
-
-  const toolbar = document.createElement('div');
-  toolbar.className = 'sticky-note-toolbar';
-
-  function runCmd(cmd, value){
-    notesEl.focus();
-    document.execCommand(cmd, false, value || null);
-  }
-  function toolBtn(cls, label, title, onClick){
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = cls;
-    b.textContent = label;
-    b.title = title;
-    b.onmousedown = (e)=>e.preventDefault(); // keep focus/selection in notesEl
-    b.onclick = onClick;
-    return b;
-  }
-
-  toolbar.appendChild(toolBtn('b', 'B', 'Bold', ()=>runCmd('bold')));
-  toolbar.appendChild(toolBtn('i', 'I', 'Italic', ()=>runCmd('italic')));
-  toolbar.appendChild(toolBtn('u', 'U', 'Underline', ()=>runCmd('underline')));
-  toolbar.appendChild(toolBtn('s', 'S', 'Strikethrough', ()=>runCmd('strikeThrough')));
-
-  const sep1 = document.createElement('div'); sep1.className = 'sep';
-  toolbar.appendChild(sep1);
-
-  toolbar.appendChild(toolBtn('list', '≡', 'Bullet list', ()=>runCmd('insertUnorderedList')));
-
-  const imgInput = document.createElement('input');
-  imgInput.type = 'file';
-  imgInput.accept = 'image/*';
-  imgInput.addEventListener('change', ()=>{
-    const file = imgInput.files && imgInput.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      runCmd('insertImage', reader.result);
-      t.notes_html = notesEl.innerHTML;
-      commit('schedule_tickets', t, 'schedule');
-    };
-    reader.readAsDataURL(file);
-    imgInput.value = '';
-  });
-  const imgBtn = toolBtn('img', '🖼', 'Insert image', ()=>imgInput.click());
-  toolbar.appendChild(imgBtn);
-  toolbar.appendChild(imgInput);
-
-  note.appendChild(toolbar);
-
-  return wrap;
-}
-
-async function addScheduleTicket(month){
-  const blank = { id: crypto.randomUUID(), month, game_name: '', release_date: null, notes: '', notes_html: '', width: null, height: null };
-  state.schedule_tickets.push(blank);
-  persistLocal('schedule_tickets');
-  renderSchedule();
-  if(ONLINE_MODE){
-    const {error} = await supa.from('schedule_tickets').insert(blank);
-    if(error) console.warn('Insert failed', 'schedule_tickets', error);
-  }
-  return blank;
 }
 
 let charts = {};
